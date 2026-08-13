@@ -10,8 +10,10 @@
 | 3 | Workout History | Browse sessions, exercise history, Epley 1RM |
 | 4 | Rest Timer | Background timer, notifications, tab visibility |
 | 5 | Analytics/Charts | Progress charts with Recharts |
-| 6 | PWA + Mobile | Service worker, manifest, iOS install, Lighthouse ≥90 |
+| 6 | PWA + Mobile | Service worker, manifest, iOS install, Lighthouse >=90 |
 | 8 | Custom Template Engine | Save/load workout templates, previous set tracking |
+| 9 | Local Vector Recommendation Engine | Cosine similarity exercise substitution vectors |
+| 10 | Weekly Volume Load Tracking | Fractional set volumes per muscle group aggregation |
 | 7 | Production Deploy | Static hosting (Vercel), HTTPS, cache headers, monitoring |
 
 ---
@@ -72,7 +74,7 @@
   - `WorkoutRepository`
   - `ExerciseRepository`
   - `SetRepository`
-- Migration system (v1 → v2 → ...)
+- Migration system (v1 -> v2 -> ...)
 - Service layer exports clean async APIs
 - Hooks (`useWorkoutSession`) now persist automatically
 
@@ -147,7 +149,7 @@
 - Install prompt handling (iOS manual, Android auto)
 - Safe area insets (notch, home indicator)
 - Touch optimizations
-- Lighthouse PWA score ≥90
+- Lighthouse PWA score >=90
 
 ### Technical
 - `vite-plugin-pwa` for SW generation
@@ -197,9 +199,62 @@ src/features/workout/components/
 
 ---
 
-## Phase 7 — Production Deployment ✅ COMPLETE
+## Phase 9 — Local Vector Recommendation Engine | ACTIVE
+
+**Goal**: 100% client-side exercise substitution recommendations using cosine similarity over exercise embedding vectors.
+
+### Features
+- Exercise substitution suggestions (e.g., "Incline DB Bench instead of Flat Bench")
+- Muscle group + equipment-based vector embeddings
+- Cosine similarity ranking of candidate exercises
+- Context-aware recommendations (respect user's available equipment)
+- No external API calls — all computation in-browser
+
+### Technical
+- Embedding vectors: `[primaryMuscle, secondaryMuscle, equipment, movementPattern, difficulty]`
+- Cosine similarity: dot(a,b) / (|a| * |b|) for angle-based similarity
+- `src/features/recommendations/` module with vector math utilities
+- `useRecommendations` hook for reactive suggestion stream
+- Exercise vectors stored as typed arrays in service layer
+- Cached computation (memoized on exercise set changes)
+
+### Database Schema v4
+```
+recommendations: { exerciseId, vector: Float32Array, metadata: { muscleGroups[], equipment[] } }
+```
+
+---
+
+## Phase 10 — Weekly Volume Load Tracking (Scoped)
+
+**Goal**: Aggregate historical set volume weekly using weighted fractional muscle group multipliers (e.g., Bench = 1.0 Chest, 0.5 Triceps).
+
+### Features
+- Per-exercise muscle activation map with fractional multipliers
+- Weekly volume aggregation per muscle group
+- Volume progression trend lines
+- Overtraining / undertraining detection (low volume weeks)
+- Muscle group balance analysis
+
+### Technical
+- Muscle activation map: `{ chest: 1.0, triceps: 0.5, anteriorDeltoid: 0.25 }` per exercise
+- Weekly bucketing via date grouping (already in Phase 3 utils)
+- `src/features/volume/` module: `calculateWeeklyVolume`, `volumeByMuscleGroup`
+- `useWeeklyVolume` hook for reactive aggregation
+- Volume multipliers defined in exercise metadata (service layer)
+
+### Database Schema v5 (Future)
+```
+volumeMetadata: { exerciseId, muscleMultipliers: Record<string, number> }
+```
+
+---
+
+## Phase 7 — Production Deployment | PAUSED
 
 **Goal**: Deploy to static hosting with proper config.
+
+> **Status**: Paused until Phases 9 and 10 are complete.
 
 ### Targets
 - **Primary**: Vercel
@@ -207,12 +262,12 @@ src/features/workout/components/
 - **Cache Headers**: Long-term for assets, no-cache for HTML/SW/Manifest
 
 ### Checklist
-- [x] `npm run build` outputs to `dist/`
-- [x] SPA fallback (index.html for all routes) via Vercel rewrites
-- [x] Service worker scope correct
-- [x] Icons served with correct MIME types
-- [x] PWA installs on iOS Safari from production URL
-- [x] Production URL live and accessible off local network
+- [ ] `npm run build` outputs to `dist/`
+- [ ] SPA fallback (index.html for all routes) via Vercel rewrites
+- [ ] Service worker scope correct
+- [ ] Icons served with correct MIME types
+- [ ] PWA installs on iOS Safari from production URL
+- [ ] Production URL live and accessible off local network
 
 ### Deployment Commands
 ```bash
@@ -234,6 +289,8 @@ npx vercel --prod   # Production deployment
 | 5 | `recharts`, `date-fns` |
 | 6 | `vite-plugin-pwa`, `workbox-window` |
 | 8 | *(none)* |
+| 9 | *(none - pure JS math, no external deps)* |
+| 10 | *(none - uses existing Phase 3 date utils)* |
 | 7 | *(none)* |
 
 ---
@@ -250,15 +307,17 @@ Each phase must pass before starting the next:
 | 3 | History browsable, 1RM calculates correctly, exercise progression visible |
 | 4 | Timer runs in background, notifications fire, survives tab switch |
 | 5 | Charts render, responsive, no layout shift, data accurate |
-| 6 | Lighthouse PWA ≥90, installs on iOS Safari, offline works |
+| 6 | Lighthouse PWA >=90, installs on iOS Safari, offline works |
 | 8 | Templates save/load, previous sets pre-fill, no modal overlays |
+| 9 | Cosine similarity vectors computed client-side, exercise suggestions render |
+| 10 | Weekly volume aggregates correctly, fractional muscle multipliers applied |
 | 7 | Live on HTTPS, cache headers correct, preview deployments work |
 
 ---
 
 ## Notes
 
-- **No scope creep**: Each phase delivers exactly what's listed. New ideas → backlog.
+- **No scope creep**: Each phase delivers exactly what's listed. New ideas -> backlog.
 - **Buildable always**: `npm run build` must pass after every commit.
 - **Mobile-first**: Test on real iPhone (via `--host`) every phase.
 - **Accessibility**: Semantic HTML, ARIA labels, color contrast, focus management.
@@ -266,6 +325,6 @@ Each phase must pass before starting the next:
 
 ---
 
-## Project Status: **COMPLETE** 🎉
+## Project Status: **Phase 9 Active | Phase 7 Paused**
 
-All 9 phases (0-8, 7) finished. The app is deployed to production on Vercel and installable as a PWA on iOS Safari. Ready for the gym.
+Phase 8 (Custom Template Engine) is fully complete. Phase 9 (Local Vector Recommendation Engine) is now the active phase. Phase 10 (Weekly Volume Load Tracking) is scoped and ready to execute after Phase 9. Phase 7 (Production Deployment) remains paused until both Phases 9 and 10 are complete.

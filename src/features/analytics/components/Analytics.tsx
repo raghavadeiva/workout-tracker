@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Dumbbell, BarChart2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Dumbbell, BarChart2, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -11,6 +11,12 @@ import {
 } from 'recharts';
 import { getHistory, type WorkoutSession } from '../../../db/database';
 import { getExerciseProgression, getAllExerciseNames } from '../utils/math';
+import { detectPlateau, type OneRMDataPoint } from '../plateauDetection';
+import { getRecommendations } from '../../recommendations/exerciseVectors';
+import type { RecommendationResult } from '../../recommendations/exerciseVectors';
+import { useWeeklyVolume } from '../../volume/useWeeklyVolume';
+import { MUSCLE_GROUPS, MUSCLE_LABELS } from '../../volume/muscleMaps';
+import type { MuscleGroup } from '../../volume/muscleMaps';
 
 function formatDateShort(timestamp: number): string {
   const date = new Date(timestamp);
@@ -51,6 +57,21 @@ export function Analytics() {
     if (!selectedExercise) return [];
     return getExerciseProgression(history, selectedExercise);
   }, [history, selectedExercise]);
+
+  const isPlateaued = useMemo(() => {
+    const dataPoints: OneRMDataPoint[] = progressionData.map((p) => ({
+      date: p.date,
+      oneRM: p.oneRM,
+    }));
+    return detectPlateau(dataPoints);
+  }, [progressionData]);
+
+  const recommendations = useMemo(() => {
+    if (!selectedExercise) return [];
+    return getRecommendations(selectedExercise, 2);
+  }, [selectedExercise]);
+
+  const { weeklyVolume, isLoading: volumeLoading, error: volumeError } = useWeeklyVolume();
 
   if (isLoading) {
     return (
@@ -156,6 +177,44 @@ export function Analytics() {
         </div>
       </div>
 
+      {/* Plateau Detected & Alternative Recommendations */}
+      {isPlateaued && selectedExercise && (
+        <div className="max-w-md mx-auto px-4 pb-4">
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+            <div className="flex items-start gap-3 mb-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-amber-900 dark:text-amber-100">
+                  Plateau Detected
+                </h3>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-0.5">
+                  No strength growth in the last 3 sessions for{' '}
+                  <span className="font-semibold">{selectedExercise}</span>.
+                  Here are alternative exercises to try:
+                </p>
+              </div>
+            </div>
+            {recommendations.length > 0 && (
+              <div className="space-y-2">
+                {recommendations.map((rec: RecommendationResult) => (
+                  <div
+                    key={rec.exercise}
+                    className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg px-3 py-2 border border-amber-100 dark:border-amber-800/30"
+                  >
+                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                      {rec.exercise}
+                    </span>
+                    <span className="text-xs text-amber-700 dark:text-amber-300 font-mono">
+                      {Math.round(rec.score * 100)}% match
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Chart */}
       <div className="max-w-md mx-auto px-4 pb-8">
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 h-72">
@@ -201,6 +260,63 @@ export function Analytics() {
           )}
         </div>
       </div>
+
+      {/* Weekly Muscle Volume */}
+      {!volumeLoading && weeklyVolume && weeklyVolume.length > 0 && (
+        <div className="max-w-md mx-auto px-4 pb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-200 dark:border-gray-700">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+              Weekly Muscle Volume
+            </h3>
+            {volumeError ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Unable to load volume data
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {MUSCLE_GROUPS.slice().reverse().map((muscle: MuscleGroup) => {
+                  const volumes = weeklyVolume.map((w) => w.volumes[muscle]);
+                  const maxVolume = Math.max(...volumes);
+                  if (maxVolume === 0) return null;
+
+                  return (
+                    <div key={muscle} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-600 dark:text-gray-400 w-24">
+                          {MUSCLE_LABELS[muscle]}
+                        </span>
+                        <span className="text-xs font-mono text-gray-900 dark:text-gray-100">
+                          {Math.round(maxVolume)}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-teal-500 dark:bg-teal-400 rounded-full"
+                          style={{
+                            width: `${(maxVolume / 5000) * 100}%`,
+                            maxWidth: '100%',
+                          }}
+                        />
+                      </div>
+                      <div className="flex -space-x-1">
+                        {weeklyVolume.map((week) => (
+                          <span
+                            key={week.weekKey}
+                            className="text-xs text-gray-500 dark:text-gray-500"
+                            title={`${week.weekLabel}: ${Math.round(week.volumes[muscle])} volume`}
+                          >
+                            {week.weekLabel.split(' ')[1]}
+                          </span>
+                        )).reverse().slice(0, 4)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
