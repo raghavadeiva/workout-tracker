@@ -92,8 +92,8 @@
 - Volume progression charts (data ready for Phase 5)
 
 ### Technical
-- `useWorkoutHistory` hook
-- `useExerciseHistory` hook
+- History data fetched via `getHistory()` from `db/database.ts`
+- `getExerciseProgression` and `getBestSet1RM` in `src/features/analytics/utils/math.ts`
 - Epley formula: `1RM = weight * (1 + reps/30)`
 - Derived stats computed in service layer
 - Date grouping (week/month/year)
@@ -199,7 +199,7 @@ src/features/workout/components/
 
 ---
 
-## Phase 9 — Local Vector Recommendation Engine | ACTIVE
+## Phase 9 — Local Vector Recommendation Engine ✅ COMPLETE
 
 **Goal**: 100% client-side exercise substitution recommendations using cosine similarity over exercise embedding vectors.
 
@@ -210,13 +210,29 @@ src/features/workout/components/
 - Context-aware recommendations (respect user's available equipment)
 - No external API calls — all computation in-browser
 
-### Technical
-|- `src/features/recommendations/` module with vector math utilities
-|- `useRecommendations` hook for reactive suggestion stream (planned, not yet implemented — Analytics.tsx calls `getRecommendations()` directly via useMemo)
+### Status
+- **Vector math** (`vectorUtils.ts`) — dotProduct, magnitude, cosine similarity ✓
+- **Exercise vectors** (`exerciseVectors.ts`) — 20-dim embeddings for 16 exercises, `getRecommendations()` ✓
+- **`useRecommendations` hook** — memoized, equipment filtering ✓
+- **Database Schema v4** — `recommendations` store added, `seedExerciseEmbeddings()` ✓
+- **Equipment preferences** — user toggles in WorkoutSession, persisted to settings store ✓
+- **In-workout exercise swap** — `ExerciseSwap` component in ExerciseCard, `swapExercise` handler ✓
+- **Analytics integration** — recommendations shown on plateau detection ✓
 
-### Database Schema v4 (Planned — not yet implemented)
+### Files Created/Modified
 ```
-recommendations: { key: exerciseId, value: { vector: Float32Array, metadata: { muscleGroups[], equipment[], movementPattern, difficulty } } }
+src/features/recommendations/
+  vectorUtils.ts             # dot product, magnitude, cosine similarity
+  exerciseVectors.ts         # 20-dim embeddings, getRecommendations()
+  useRecommendations.ts      # reactive hook with memoization + equipment filtering
+  components/
+    ExerciseSwap.tsx         # swap button + dropdown with alternatives
+    EquipmentPreferences.tsx # collapsible equipment toggle panel
+src/db/database.ts           # v4 migration, ExerciseEmbedding type, seed/save/load functions
+src/hooks/useWorkoutSession.ts  # equipment state, swapExercise handler, seed on mount
+src/features/workout/components/
+  ExerciseCard.tsx           # added ExerciseSwap integration
+  WorkoutSession.tsx         # added EquipmentPreferences panel
 ```
 
 ---
@@ -305,7 +321,7 @@ Each phase must pass before starting the next:
 | 5 | Charts render, responsive, no layout shift, data accurate |
 | 6 | Lighthouse PWA >=90, installs on iOS Safari, offline works |
 | 8 | Templates save/load, previous sets pre-fill, no modal overlays |
-| 9 | Cosine similarity vectors computed client-side, exercise suggestions render |
+| 9 | Cosine similarity vectors computed client-side, exercise suggestions render, equipment filtering, in-workout swap ✓ |
 | 10 | Weekly volume aggregates correctly, fractional muscle multipliers applied |
 | 7 | Live on HTTPS, cache headers correct, preview deployments work |
 
@@ -321,6 +337,6 @@ Each phase must pass before starting the next:
 
 ---
 
-## Project Status: **Phase 9 Active | Phase 7 Paused**
+## Project Status: **Phase 9 Complete | Phase 10 Scoped | Phase 7 Paused**
 
-Phase 8 (Custom Template Engine) is fully complete. Phase 9 (Local Vector Recommendation Engine) is now the active phase. Phase 10 (Weekly Volume Load Tracking) is scoped and ready to execute after Phase 9. Phase 7 (Production Deployment) remains paused until both Phases 9 and 10 are complete.
+Phase 8 (Custom Template Engine) is fully complete. Phase 9 (Local Vector Recommendation Engine) is now complete — vector math, embeddings, `useRecommendations` hook, v4 database migration, equipment preferences, in-workout exercise swap, and Analytics integration are all done. Phase 10 (Weekly Volume Load Tracking) is scoped and ready to execute. Phase 7 (Production Deployment) remains paused until both Phases 9 and 10 are complete.

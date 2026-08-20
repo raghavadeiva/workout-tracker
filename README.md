@@ -65,7 +65,7 @@ I got tired of using my notes app to keep track of my gym progress. I went from 
 | **Language** | TypeScript 6 (strict mode, no `any`) |
 | **Build** | Vite 5 + `@vitejs/plugin-react` (Vite 8.x installed) |
 | **Styling** | Tailwind CSS 4 (utility-first, dark mode) |
-| **Storage** | IndexedDB via `idb` wrapper (v3 schema, migrations) |
+| **Storage** | IndexedDB via `idb` wrapper (v4 schema, migrations) |
 | **Charts** | Recharts 2 (responsive, accessible) |
 | **PWA** | `vite-plugin-pwa` + Workbox (auto-update SW) |
 | **Icons** | Lucide React (tree-shakeable, 1KB/icons) |
@@ -76,7 +76,7 @@ I got tired of using my notes app to keep track of my gym progress. I went from 
 ## Architecture & Engineering Highlights
 
 ### Offline-First by Design
-- **IndexedDB schema v3** — `activeSession`, `settings`, `history`, `templates` stores
+|- **IndexedDB schema v4** — `activeSession`, `settings`, `history`, `templates`, `recommendations` stores
 - **Repository pattern** — clean separation: Components → Hooks → DB layer
 - **Optimistic writes** — UI updates instantly; persistence async
 - **Auto-migration** — `openDB` upgrade callback handles schema evolution
@@ -155,8 +155,9 @@ src/
 │   │   ├── plateauDetection.ts
 │   │   └── utils/math.ts
 │   ├── recommendations/
-│   │   ├── vectorUtils.ts   # dot product, magnitude, cosine similarity
-│   │   └── exerciseVectors.ts # 20-dim embedding vectors, getRecommendations()
+│   │   ├── vectorUtils.ts       # dot product, magnitude, cosine similarity
+│   │   ├── exerciseVectors.ts   # 20-dim embedding vectors, getRecommendations()
+│   │   └── useRecommendations.ts # reactive hook with memoization + equipment filtering
 │   └── volume/
 │       ├── muscleMaps.ts    # Fractional muscle activation multipliers
 │       ├── volumeUtils.ts   # calculateWeeklyVolume, getLatestWeekVolumes

@@ -6,6 +6,9 @@ import {
   finishSession,
   saveWeightUnit,
   loadWeightUnit,
+  saveAvailableEquipment,
+  loadAvailableEquipment,
+  seedExerciseEmbeddings,
   generateId,
   createEmptySession,
   type WorkoutSession,
@@ -21,6 +24,7 @@ import {
 export function useWorkoutSession() {
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [weightUnit, setWeightUnitState] = useState<WeightUnit>('lbs');
+  const [availableEquipment, setAvailableEquipmentState] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [templates, setTemplates] = useState<Template[]>([]);
 
@@ -29,15 +33,17 @@ export function useWorkoutSession() {
     let mounted = true;
 
     async function load() {
-      const [savedSession, savedUnit, savedTemplates] = await Promise.all([
+      const [savedSession, savedUnit, savedTemplates, savedEquipment] = await Promise.all([
         loadSession(),
         loadWeightUnit(),
         getTemplates(),
+        loadAvailableEquipment(),
       ]);
 
       if (mounted) {
         setSession(savedSession ?? createEmptySession());
         setWeightUnit(savedUnit);
+        setAvailableEquipmentState(savedEquipment);
         setTemplates(savedTemplates);
         setIsLoading(false);
       }
@@ -64,8 +70,24 @@ export function useWorkoutSession() {
     }
   }, [weightUnit, isLoading]);
 
+  // Auto-save available equipment
+  useEffect(() => {
+    if (!isLoading) {
+      saveAvailableEquipment(availableEquipment);
+    }
+  }, [availableEquipment, isLoading]);
+
+  // Seed exercise embeddings on first mount (idempotent)
+  useEffect(() => {
+    seedExerciseEmbeddings().catch(console.error);
+  }, []);
+
   const setWeightUnit = useCallback((unit: WeightUnit) => {
     setWeightUnitState(unit);
+  }, []);
+
+  const setAvailableEquipment = useCallback((equipment: string[]) => {
+    setAvailableEquipmentState(equipment);
   }, []);
 
   const addExercise = useCallback((name: string) => {
@@ -148,6 +170,26 @@ export function useWorkoutSession() {
     });
   }, []);
 
+  const swapExercise = useCallback(async (exerciseId: string, newName: string) => {
+    const previousSets = await getPreviousPerformance(newName);
+    setSession((prev) =>
+      prev
+        ? {
+            ...prev,
+            exercises: prev.exercises.map((ex) =>
+              ex.id === exerciseId
+                ? {
+                    ...ex,
+                    name: newName,
+                    previousSets: previousSets.length > 0 ? previousSets : ex.previousSets,
+                  }
+                : ex
+            ),
+          }
+        : null
+    );
+  }, []);
+
   const finishWorkout = useCallback(async () => {
     if (!session || session.exercises.length === 0) return;
     await finishSession(session);
@@ -215,6 +257,8 @@ export function useWorkoutSession() {
     exercises: session?.exercises ?? [],
     weightUnit,
     setWeightUnit,
+    availableEquipment,
+    setAvailableEquipment,
     isLoading,
     templates,
     addExercise,
@@ -222,6 +266,7 @@ export function useWorkoutSession() {
     deleteSet,
     deleteExercise,
     reorderExercise,
+    swapExercise,
     finishWorkout,
     clearWorkout,
     saveCurrentAsTemplate,

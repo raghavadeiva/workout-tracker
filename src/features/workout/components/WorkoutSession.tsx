@@ -3,6 +3,7 @@ import { Plus, Dumbbell, CheckCircle2, Save } from 'lucide-react';
 import { ExerciseSelector } from './ExerciseSelector';
 import { ExerciseCard } from './ExerciseCard';
 import { RestTimerBanner } from './RestTimerBanner';
+import { EquipmentPreferences } from '../../recommendations/components/EquipmentPreferences';
 import { useWorkoutSession } from '../../../hooks/useWorkoutSession';
 import { useRestTimer } from '../../../hooks/useRestTimer';
 import type { Exercise } from '../../../db/database';
@@ -12,12 +13,15 @@ export function WorkoutSession() {
     exercises,
     weightUnit,
     setWeightUnit,
+    availableEquipment,
+    setAvailableEquipment,
     isLoading,
     templates,
     addExercise,
     logSet,
     deleteSet,
     deleteExercise,
+    swapExercise,
     reorderExercise,
     finishWorkout,
     saveCurrentAsTemplate,
@@ -188,9 +192,11 @@ export function WorkoutSession() {
                   key={exercise.id}
                   exercise={exercise}
                   weightUnit={weightUnit}
+                  availableEquipment={availableEquipment}
                   onLogSet={logSetAndStartTimer}
                   onDeleteSet={deleteSet}
                   onDeleteExercise={deleteExercise}
+                  onSwapExercise={swapExercise}
                   onReorder={reorderExercise}
                 />
               ))}
@@ -218,6 +224,12 @@ export function WorkoutSession() {
 
       {/* Rest Timer Banner */}
       <RestTimerBanner {...timerProps} />
+
+      {/* Equipment Preferences */}
+      <EquipmentPreferences
+        availableEquipment={availableEquipment}
+        onSetAvailableEquipment={setAvailableEquipment}
+      />
     </div>
   );
 }

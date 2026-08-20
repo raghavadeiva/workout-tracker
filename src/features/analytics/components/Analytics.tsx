@@ -12,7 +12,7 @@ import {
 import { getHistory, type WorkoutSession } from '../../../db/database';
 import { getExerciseProgression, getAllExerciseNames } from '../utils/math';
 import { detectPlateau, type OneRMDataPoint } from '../plateauDetection';
-import { getRecommendations } from '../../recommendations/exerciseVectors';
+import { useRecommendations } from '../../recommendations/useRecommendations';
 import type { RecommendationResult } from '../../recommendations/exerciseVectors';
 import { useWeeklyVolume } from '../../volume/useWeeklyVolume';
 import { MUSCLE_GROUPS, MUSCLE_LABELS } from '../../volume/muscleMaps';
@@ -66,10 +66,7 @@ export function Analytics() {
     return detectPlateau(dataPoints);
   }, [progressionData]);
 
-  const recommendations = useMemo(() => {
-    if (!selectedExercise) return [];
-    return getRecommendations(selectedExercise, 2);
-  }, [selectedExercise]);
+  const { recommendations } = useRecommendations(selectedExercise, { topN: 2 });
 
   const { weeklyVolume, isLoading: volumeLoading, error: volumeError } = useWeeklyVolume();
 
@@ -194,9 +191,9 @@ export function Analytics() {
                 </p>
               </div>
             </div>
-            {recommendations.length > 0 && (
+            {(recommendations?.length ?? 0) > 0 && (
               <div className="space-y-2">
-                {recommendations.map((rec: RecommendationResult) => (
+                {recommendations!.map((rec: RecommendationResult) => (
                   <div
                     key={rec.exercise}
                     className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg px-3 py-2 border border-amber-100 dark:border-amber-800/30"

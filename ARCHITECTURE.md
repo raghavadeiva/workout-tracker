@@ -98,12 +98,13 @@ Components -> Custom Hooks -> Service Layer (Repository) -> IndexedDB
 
 ### waR: Database Schema
 **IndexedDB via `idb` wrapper — Database: `WorkoutDB`**
-- Current version: **v3** (added `templates` store)
+- Current version: **v4** (Phase 9: added `recommendations` store)
 - Stores:
   - `activeSession` (key: `'current'`)
   - `settings` (key: `'prefs'`)
   - `history` (keyPath: `id`, index: `by-date` on `startedAt`)
   - `templates` (keyPath: `id`, indexes: `by-name`, `by-last-used`)
+  - `recommendations` (keyPath: `exerciseId`, index: `by-exercise`)
 - Migrations handled in `upgrade` callback of `openDB`.
 
 ### waR: React Rules of Hooks
@@ -160,12 +161,13 @@ Vectors are stored as typed arrays (`Float32Array`) in the service layer (`src/f
 5. Top-N results ranked by similarity score, returned to UI
 
 ### Data Storage
-|- Vectors currently embedded in code (`src/features/recommendations/exerciseVectors.ts`)
-|- Database Schema v4 (planned, NOT yet implemented): `recommendations` store
+|- Vectors stored in code (`exerciseVectors.ts`) AND seeded to IndexedDB `recommendations` store (v4)
+|- Database Schema v4 (IMPLEMENTED): `recommendations` store
   ```
-  recommendations: { key: exerciseId, value: { vector: Float32Array, metadata: { muscleGroups[], equipment[], movementPattern, difficulty } } }
+  recommendations: { key: exerciseId, value: { vector: number[], metadata: { muscleGroups[], equipment[], movementPattern, difficulty } } }
   ```
-|- Migration v3 -> v4 planned for `upgrade` callback in `database.ts`
+- Migration v3 → v4 in `upgrade` callback in `database.ts`
+- `saveExerciseEmbedding`, `getExerciseEmbedding`, `getAllExerciseEmbeddings`, `seedExerciseEmbeddings` functions in `database.ts`
 
 ### Performance
 - Vectors memoized on exercise set changes
@@ -175,9 +177,12 @@ Vectors are stored as typed arrays (`Float32Array`) in the service layer (`src/f
 ### Files
 ```
 src/features/recommendations/
-  vectorUtils.ts       # dot product, magnitude, cosine similarity
-  exerciseVectors.ts   # embedding vectors per exercise, getRecommendations()
-  useRecommendations.ts # planned reactive hook (not yet implemented)
+  vectorUtils.ts            # dot product, magnitude, cosine similarity
+  exerciseVectors.ts        # 20-dim embeddings, getRecommendations()
+  useRecommendations.ts     # reactive hook with memoization + equipment filtering
+  components/
+    ExerciseSwap.tsx        # swap button + dropdown with alternatives (in ExerciseCard)
+    EquipmentPreferences.tsx # collapsible equipment toggle panel (in WorkoutSession)
 ```
 
 ### Plateau Detection
