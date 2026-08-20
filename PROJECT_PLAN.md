@@ -27,7 +27,7 @@
 - [x] Install and configure Tailwind CSS (v4 compatible config)
 - [x] Install only essential dependencies
 - [x] Create source directory structure (`features/`, `components/`, `db/`, `hooks/`, `types/`, `utils/`)
-- [x] Create `HERMES.md` (architecture principles, conventions, rules)
+- [x] Create `ARCHITECTURE.md` (architecture principles, conventions, rules)
 - [x] Create `PROJECT_PLAN.md` (this file)
 - [x] Create `.gitignore`
 - [x] Create minimal working App (placeholder page)
@@ -63,17 +63,17 @@
 **Goal**: Data survives browser reload via IndexedDB.
 
 ### Features
-- Save/load workout sessions
-- Save/load exercise library
-- Schema versioning with migrations
+|- Save/load workout sessions
+|- Exercise library (hardcoded common exercises in ExerciseSelector)
+|- Schema versioning with migrations
 - Memory fallback if IndexedDB blocked
 
 ### Technical
 - `idb` library for type-safe IndexedDB
-- Repository pattern in `src/db/services/`
-  - `WorkoutRepository`
-  - `ExerciseRepository`
-  - `SetRepository`
+- Repository pattern in `src/db/database.ts`
+  - `WorkoutRepository` (inline: `saveSession`, `loadSession`, `finishSession`, `getHistory`)
+  - `ExerciseRepository` (inline: `getPreviousPerformance`)
+  - `SetRepository` (inline in exercise operations)
 - Migration system (v1 -> v2 -> ...)
 - Service layer exports clean async APIs
 - Hooks (`useWorkoutSession`) now persist automatically
@@ -211,16 +211,12 @@ src/features/workout/components/
 - No external API calls — all computation in-browser
 
 ### Technical
-- Embedding vectors: `[primaryMuscle, secondaryMuscle, equipment, movementPattern, difficulty]`
-- Cosine similarity: dot(a,b) / (|a| * |b|) for angle-based similarity
-- `src/features/recommendations/` module with vector math utilities
-- `useRecommendations` hook for reactive suggestion stream
-- Exercise vectors stored as typed arrays in service layer
-- Cached computation (memoized on exercise set changes)
+|- `src/features/recommendations/` module with vector math utilities
+|- `useRecommendations` hook for reactive suggestion stream (planned, not yet implemented — Analytics.tsx calls `getRecommendations()` directly via useMemo)
 
-### Database Schema v4
+### Database Schema v4 (Planned — not yet implemented)
 ```
-recommendations: { exerciseId, vector: Float32Array, metadata: { muscleGroups[], equipment[] } }
+recommendations: { key: exerciseId, value: { vector: Float32Array, metadata: { muscleGroups[], equipment[], movementPattern, difficulty } } }
 ```
 
 ---
@@ -237,11 +233,11 @@ recommendations: { exerciseId, vector: Float32Array, metadata: { muscleGroups[],
 - Muscle group balance analysis
 
 ### Technical
-- Muscle activation map: `{ chest: 1.0, triceps: 0.5, anteriorDeltoid: 0.25 }` per exercise
-- Weekly bucketing via date grouping (already in Phase 3 utils)
-- `src/features/volume/` module: `calculateWeeklyVolume`, `volumeByMuscleGroup`
-- `useWeeklyVolume` hook for reactive aggregation
-- Volume multipliers defined in exercise metadata (service layer)
+|- Muscle activation map: `{ chest: 1.0, triceps: 0.5, anteriorDeltoid: 0.25 }` per exercise
+|- Weekly bucketing via ISO week calculation (`getISOWeek` in `volumeUtils.ts`)
+|- `src/features/volume/` module: `calculateWeeklyVolume`, `getLatestWeekVolumes`
+|- `useWeeklyVolume` hook for reactive aggregation (implemented)
+|- Volume multipliers defined in `muscleMaps.ts` service layer
 
 ### Database Schema v5 (Future)
 ```
@@ -301,7 +297,7 @@ Each phase must pass before starting the next:
 
 | Phase | Gate |
 |-------|------|
-| 0 | `npm run build` ✓, `npm run dev -- --host` ✓, HERMES.md ✓, PROJECT_PLAN.md ✓ |
+| 0 | `npm run build` ✓, `npm run dev -- --host` ✓, ARCHITECTURE.md ✓, PROJECT_PLAN.md ✓ |
 | 1 | Full workout flow works in-memory, no console errors, mobile layout correct |
 | 2 | Data persists across reload, `npm run build` ✓, migrations tested |
 | 3 | History browsable, 1RM calculates correctly, exercise progression visible |

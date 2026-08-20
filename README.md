@@ -7,9 +7,9 @@ I got tired of using my notes app to keep track of my gym progress. I went from 
 > Built for speed. Designed for the gym. Zero backend. Zero latency. Complete privacy.
 
 [![Built with React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)](https://vite.dev)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![PWA](https://img.shields.io/badge/PWA-Ready-5A0FC8?logo=pwa&logoColor=white)](https://web.dev/progressive-web-apps)
 [![IndexedDB](https://img.shields.io/badge/IndexedDB-Local_Storage-FF6B00?logo=databricks&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
 
@@ -44,7 +44,7 @@ I got tired of using my notes app to keep track of my gym progress. I went from 
 - **Epley formula**: `1RM = weight × (1 + reps / 30)`
 
 ### 🧠 Cosine Similarity Recommendation Engine
-- **Vector-based exercise profiling** — 8-dimension movement pattern vectors
+- **Vector-based exercise profiling** — 20-dimension movement pattern vectors
 - **Real-time suggestions** — ranks template/library exercises by biomechanical similarity
 - **Muscle group & plane-of-motion awareness** — balances push/pull, vertical/horizontal
 - **Zero external API** — all computation client-side, instant, private
@@ -62,9 +62,9 @@ I got tired of using my notes app to keep track of my gym progress. I went from 
 | Layer | Technology |
 |-------|------------|
 | **Framework** | React 19 (function components, hooks) |
-| **Language** | TypeScript 5.5 (strict mode, no `any`) |
-| **Build** | Vite 5 + `@vitejs/plugin-react` |
-| **Styling** | Tailwind CSS 3.4 (utility-first, dark mode) |
+| **Language** | TypeScript 6 (strict mode, no `any`) |
+| **Build** | Vite 5 + `@vitejs/plugin-react` (Vite 8.x installed) |
+| **Styling** | Tailwind CSS 4 (utility-first, dark mode) |
 | **Storage** | IndexedDB via `idb` wrapper (v3 schema, migrations) |
 | **Charts** | Recharts 2 (responsive, accessible) |
 | **PWA** | `vite-plugin-pwa` + Workbox (auto-update SW) |
@@ -141,21 +141,28 @@ src/
 │   └── database.ts          # IndexedDB schema, migrations, CRUD
 ├── hooks/
 │   ├── useWorkoutSession.ts # Active workout + templates + ghost sets
-│   ├── useRestTimer.ts      # 90s auto-timer with adjust/dismiss
-│   └── useRecommendations.ts# Cosine similarity engine
+│   └── useRestTimer.ts      # 90s auto-timer with adjust/dismiss
 ├── features/
 │   ├── workout/
-│   │   └── components/      # WorkoutSession, ExerciseCard, SetInput, RestTimerBanner
+│   │   ├── components/      # WorkoutSession, ExerciseCard, SetInput, SetRow, RestTimerBanner
+│   │   ├── types/
+│   │   │   └── workout.ts   # Exercise, SetEntry, WorkoutSession, WeightUnit types
+│   │   └── ...
 │   ├── history/
 │   │   └── components/      # History list, WorkoutDetail
 │   ├── analytics/
-│   │   └── components/      # Analytics (1RM charts + recommendations)
-│   └── templates/
-│       └── components/      # Template cards (integrated in empty state)
-├── utils/
-│   ├── math.ts              # Epley, progression, vector ops
-│   └── recommendations.ts   # Cosine similarity, exercise vectors
-└── App.tsx                  # Three-tab nav: Workout | History | Progress
+│   │   ├── components/      # Analytics (1RM charts + recommendations)
+│   │   ├── plateauDetection.ts
+│   │   └── utils/math.ts
+│   ├── recommendations/
+│   │   ├── vectorUtils.ts   # dot product, magnitude, cosine similarity
+│   │   └── exerciseVectors.ts # 20-dim embedding vectors, getRecommendations()
+│   └── volume/
+│       ├── muscleMaps.ts    # Fractional muscle activation multipliers
+│       ├── volumeUtils.ts   # calculateWeeklyVolume, getLatestWeekVolumes
+│       └── useWeeklyVolume.ts
+├── index.css               # @import "tailwindcss"
+└── App.tsx                 # Three-tab nav: Workout | History | Progress
 ```
 
 ---

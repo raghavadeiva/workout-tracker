@@ -137,15 +137,18 @@ if (showSelector) return <Selector />;
 - **Pure Cosine Similarity** — the sole similarity metric for exercise substitution ranking
 - Formula: `cosineSimilarity(a, b) = dot(a, b) / (||a|| * ||b||)`
 - Result: angle-based similarity in [-1, 1], where 1 = identical direction
+- **Vector dimension schema (20 dimensions)**: 10 muscle groups, 4 equipment types, 6 movement patterns
+  - Muscle (0-9): chest, upperBack, shoulders, quads, hamstrings, glutes, triceps, biceps, calves, abs
+  - Equipment (10-13): barbell, dumbbell, machine, bodyweight
+  - Movement (14-19): push, pull, hinge, squat, lunge, carry
 
 ### Vector Embedding Schema
-Each exercise is represented as a fixed-length embedding vector comprising:
-- Primary muscle group activation (one-hot or weighted scalar)
-- Secondary muscle group activation (one-hot or weighted scalar)
-- Equipment type (one-hot encoded)
-- Movement pattern (push/pull/hinge/lunge/squat/carry — one-hot)
-- Difficulty tier (scalar 1-5)
-- Exercise category (compound/isolation — one-hot)
+Each exercise is represented as a fixed-length 20-dimension embedding vector:
+- Muscle Groups (0-9): chest, upperBack, shoulders, quads, hamstrings, glutes, triceps, biceps, calves, abs
+- Equipment (10-13): barbell, dumbbell, machine, bodyweight
+- Movement Patterns (14-19): push, pull, hinge, squat, lunge, carry
+
+Values represent proportional activation/usage (0.0 to 1.0).
 
 Vectors are stored as typed arrays (`Float32Array`) in the service layer (`src/features/recommendations/`).
 
@@ -157,11 +160,12 @@ Vectors are stored as typed arrays (`Float32Array`) in the service layer (`src/f
 5. Top-N results ranked by similarity score, returned to UI
 
 ### Data Storage
-- Database Schema v4: `recommendations` store
+|- Vectors currently embedded in code (`src/features/recommendations/exerciseVectors.ts`)
+|- Database Schema v4 (planned, NOT yet implemented): `recommendations` store
   ```
   recommendations: { key: exerciseId, value: { vector: Float32Array, metadata: { muscleGroups[], equipment[], movementPattern, difficulty } } }
   ```
-- Migration v3 -> v4 in `upgrade` callback
+|- Migration v3 -> v4 planned for `upgrade` callback in `database.ts`
 
 ### Performance
 - Vectors memoized on exercise set changes
@@ -172,9 +176,8 @@ Vectors are stored as typed arrays (`Float32Array`) in the service layer (`src/f
 ```
 src/features/recommendations/
   vectorUtils.ts       # dot product, magnitude, cosine similarity
-  exerciseVectors.ts   # embedding vectors per exercise
-  RecommendationService.ts  # ranking + filtering logic
-  useRecommendations.ts     # reactive hook
+  exerciseVectors.ts   # embedding vectors per exercise, getRecommendations()
+  useRecommendations.ts # planned reactive hook (not yet implemented)
 ```
 
 ### Plateau Detection
@@ -196,7 +199,7 @@ src/features/analytics/
 
 ---
 
-## Phase 10 — Weekly Volume Load Tracking (Scopped)
+## Phase 10 — Weekly Volume Load Tracking (Scoped)
 
 ### waR: Volume Multipliers & Muscle Activation Maps
 
@@ -205,10 +208,10 @@ src/features/analytics/
 - Each exercise maps to a set of muscle groups with **fractional multipliers** (e.g., Bench Press = `{ chest: 1.0, triceps: 0.5, anteriorDeltoid: 0.25 }`)
 - Multipliers represent the proportional volume contribution of each muscle group per set
 - Weekly volume = sum of `sets * reps * weight * muscleMultiplier` bucketed by week
-- Weeks bucketed by ISO week (Monday-Sunday) via `date-fns`
+- Weeks bucketed by ISO week (Monday-Sunday) via custom `getISOWeek()` in `volumeUtils.ts`
 
 ### Muscle Activation Map Source
-- Stored in exercise metadata in the service layer
+|- Stored in `src/features/volume/muscleMaps.ts` as `MUSCLE_ACTIVATION_MAP`
 - Multiplier scale: 0.0 (not involved) to 1.0 (primary mover)
 - Multi-dimensional: chest, back, shoulders, quads, hamstrings, glutes, arms (biceps/triceps/brachialis), calves, abs
 
@@ -220,9 +223,11 @@ src/features/analytics/
 5. Return time-series: `{ week: string, chest: number, back: number, ... }[]`
 
 ### Database Schema v5 (Future — Phase 10)
-```
-volumeMetadata: { key: exerciseId, value: { muscleMultipliers: Record<string, number> } }
-```
+|- Volume multipliers currently hardcoded in `muscleMaps.ts` (no DB store needed)
+|- `volumeMetadata` store planned for user-customizable multipliers:
+  ```
+  volumeMetadata: { key: exerciseId, value: { muscleMultipliers: Record<string, number> } }
+  ```
 - Migration v4 -> v5 in `upgrade` callback
 
 ### Files
