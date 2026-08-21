@@ -207,8 +207,10 @@ src/
 ### ✅ Complete
 Phases 0-6, 8-14 — Foundation, persistence, history, rest timer, analytics, PWA, templates, **873-exercise vector recommendation engine**, weekly volume tracking, **UI redesign (Stitch design system)**, **timestamp-based timer engine**, **template & history fixes**, **exercise database expansion**
 
-### 📋 Next (Phase 7)
-Production deployment — static hosting (Vercel), HTTPS, cache headers. All feature phases are complete; the app is deploy-ready via `npx vercel`.
+### 🚀 Deployed
+**Live at https://hypertrophy-sigma.vercel.app** — installable PWA (Add to Home Screen on iOS Safari). All feature phases complete.
+
+Redeploy anytime with `npx vercel --prod`.
 
 ---
 

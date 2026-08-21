@@ -381,4 +381,4 @@ Each logical step = one commit. Message format: `feat(scope): description` / `fi
 | 12 Timer Fixes | Timestamp-based timer persists across tabs + reloads, title/badge visible outside app, notification at zero |
 | 13 Template Fixes | Persistence root cause fixed (undefined index key), rename/delete UI, ghost-bleed keyed remount, full-series chart verified |
 | 14 Exercise DB | 873-exercise library seeded from exercises.json, cosine engine verified, equipment bucket filtering |
-| 7 Deploy | Static site serves on Netlify/Vercel/GitHub Pages, HTTPS, cache headers correct |
+| 7 Deploy | Live at https://hypertrophy-sigma.vercel.app — SPA fallback ✓, tiered cache headers verified via curl, HTTPS/HSTS ✓ |
