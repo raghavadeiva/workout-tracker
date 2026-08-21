@@ -14,6 +14,10 @@
 | 8 | Custom Template Engine | Save/load workout templates, previous set tracking |
 | 9 | Local Vector Recommendation Engine | Cosine similarity exercise substitution vectors |
 | 10 | Weekly Volume Load Tracking | Fractional set volumes per muscle group aggregation |
+| 11 | UI Redesign | Complete visual rebuild from scratch following Apple design principles |
+| 12 | Timer & Notification Fixes | Sound/alert on rest end, background countdown, home screen widget |
+| 13 | Template & History Fixes | Edit/delete templates, persistence fix, progress graph fix |
+| 14 | Exercise Database Expansion | Premade exercise DB, muscle distribution, equipment correlations |
 | 7 | Production Deploy | Static hosting (Vercel), HTTPS, cache headers, monitoring |
 
 ---
@@ -63,9 +67,9 @@
 **Goal**: Data survives browser reload via IndexedDB.
 
 ### Features
-|- Save/load workout sessions
-|- Exercise library (hardcoded common exercises in ExerciseSelector)
-|- Schema versioning with migrations
+- Save/load workout sessions
+- Exercise library (hardcoded common exercises in ExerciseSelector)
+- Schema versioning with migrations
 - Memory fallback if IndexedDB blocked
 
 ### Technical
@@ -237,7 +241,7 @@ src/features/workout/components/
 
 ---
 
-## Phase 10 — Weekly Volume Load Tracking (Scoped)
+## Phase 10 — Weekly Volume Load Tracking ✅ COMPLETE
 
 **Goal**: Aggregate historical set volume weekly using weighted fractional muscle group multipliers (e.g., Bench = 1.0 Chest, 0.5 Triceps).
 
@@ -245,15 +249,23 @@ src/features/workout/components/
 - Per-exercise muscle activation map with fractional multipliers
 - Weekly volume aggregation per muscle group
 - Volume progression trend lines
-- Overtraining / undertraining detection (low volume weeks)
+- Overtraining / undertraining detection (low/high volume weeks)
 - Muscle group balance analysis
 
+### Status
+- **Muscle activation map** (`muscleMaps.ts`) — fractional multipliers per exercise ✓
+- **Weekly volume calculation** (`volumeUtils.ts`) — `calculateWeeklyVolume`, `getLatestWeekVolumes` ✓
+- **Overtraining/undertraining detection** — `detectVolumeRisks` with configurable thresholds ✓
+- **Muscle balance analysis** — `analyzeMuscleBalance` with deviation scoring ✓
+- **`useWeeklyVolume` hook** — reactive aggregation with error handling ✓
+- **Analytics integration** — volume bar charts, balance bars, risk alerts ✓
+
 ### Technical
-|- Muscle activation map: `{ chest: 1.0, triceps: 0.5, anteriorDeltoid: 0.25 }` per exercise
-|- Weekly bucketing via ISO week calculation (`getISOWeek` in `volumeUtils.ts`)
-|- `src/features/volume/` module: `calculateWeeklyVolume`, `getLatestWeekVolumes`
-|- `useWeeklyVolume` hook for reactive aggregation (implemented)
-|- Volume multipliers defined in `muscleMaps.ts` service layer
+- Muscle activation map: `{ chest: 1.0, triceps: 0.5, shoulders: 0.25 }` per exercise
+- Weekly bucketing via ISO week calculation (`getISOWeek` in `volumeUtils.ts`)
+- `src/features/volume/` module: `calculateWeeklyVolume`, `getLatestWeekVolumes`, `detectVolumeRisks`, `analyzeMuscleBalance`
+- `useWeeklyVolume` hook for reactive aggregation
+- Volume multipliers defined in `muscleMaps.ts` service layer
 
 ### Database Schema v5 (Future)
 ```
@@ -262,11 +274,106 @@ volumeMetadata: { exerciseId, muscleMultipliers: Record<string, number> }
 
 ---
 
+## Phase 11 — UI Redesign | TODO
+
+**Goal**: Completely scrap the current UI and rebuild it from scratch following Apple's design principles (using `/apple-design` skill). All existing screens get a full visual overhaul while preserving functionality.
+
+### Scope
+- **Complete UI teardown** — current components will be replaced, not incrementally upgraded
+- **Apple design system** — applied to every screen: WorkoutSession, ExerciseSelector, Analytics, History, WorkoutDetail
+- **Apple design principles**:
+  - SF Rounded / system font family (`SF Pro Display`, `SF Pro Text`)
+  - Depth-based layering: background → secondary group → elevated surface
+  - Subtle shadows (0px 1px 3px rgba(0,0,0,0.05), 0px 2px 8px rgba(0,0,0,0.08))
+  - Corner radius: 16px for cards, 18-24px for containers, 28px for modals
+  - Minimal color palette: grayscale base with blue accent (#007AFF)
+  - 4px spacing grid (4, 8, 12, 16, 24, 32)
+- **Fluid animations** — spring-based transitions (16ms delay, 0.9 bounce, 280ms duration)
+- **SF Symbols** equivalents from lucide-react where available
+- **Typography hierarchy** — display bold, body regular/semibold, caption monoco
+- **Touch target sizing** — minimum 44x44px for interactive elements
+- **Blur + vibrancy** — `backdrop-filter: blur(10px)` for floating elements
+
+### Files Affected
+- `src/App.tsx` — navigation redesign (tab bar with SF Symbols)
+- `src/features/workout/components/` — ALL components (WorkoutSession, ExerciseCard, SetInput, SetRow, RestTimerBanner)
+- `src/features/analytics/components/Analytics.tsx` — charts, stats cards, volume/risk UI
+- `src/features/history/components/` — History, WorkoutDetail
+- `src/App.css` — base styles (font family, color vars, blur effects)
+- `src/index.css` — Tailwind base layer overrides
+
+### Approach
+1. Load `/apple-design` skill for reference design patterns
+2. Create a design token file (`src/styles/tokens.ts`) with colors, spacing, border radius, shadows
+3. Rebuild each component using Apple's visual language
+4. Test on device via `--host` for mobile fidelity
+5. Lighthouse check to ensure no perf degradation
+
+---
+
+## Phase 12 — Timer & Notification Fixes | TODO
+
+**Goal**: Fix rest timer behavior for background operation, sound alerts, and home screen visibility.
+
+### Feedback Items
+- "Add sound/Alert when set rest countdown ends"
+- "Make timer countdown even when out of the app"
+- "Make timer visible on Home Screen"
+- "Timer persistence - if I go to a different tab within the app, the timer needs to continue"
+
+### Technical
+- Audio API (`new Audio()`) for sound alerts on rest end
+- Keep `setInterval` running with `Page Visibility API` + `requestAnimationFrame` fallback
+- Background sync via Service Worker + Push events for home screen widget
+- Move timer state to top-level (`App.tsx`) so it persists across tab navigation
+
+### Database Schema v6 (Future)
+```
+timerState: { key: 'active', value: { exerciseId, startTime, duration, isRunning } }
+```
+
+---
+
+## Phase 13 — Template & History Fixes | TODO
+
+**Goal**: Fix template persistence, add edit/delete, fix previous sets and progress graph issues.
+
+### Feedback Items
+- "Delete / edit workout templates"
+- "Template save not persistent"
+- "The shadow notes from last time we did that workout shit populate INSIDE the type field for this workout" — previous set data bleeding into wrong fields
+- "Progress tracker graph only displays first and last time that exercise was done, doesn't plot everything"
+
+### Technical
+- Audit `saveTemplate` in `database.ts` — ensure `put()` is called correctly and template is committed
+- Template list screen: add edit (rename) and delete with confirmation
+- Fix `getPreviousPerformance` — ensure data maps to correct exercise by name match, not leaking into type fields
+- Fix `getExerciseProgression` in `math.ts` — currently returns only 2 data points (first/last); should return all sessions with date + 1RM
+- Add `deleteTemplate` function to database layer
+
+---
+
+## Phase 14 — Exercise Database Expansion | TODO
+
+**Goal**: Expand the exercise library with a premade database of exercises, muscle group target distributions, and equipment strength correlations.
+
+### Feedback Items
+- "Increase exercise selection"
+- "find premade database of exercises plus muscle group target distribution plus mbe strength correlation between cable/machine/dumbell/barbell"
+
+### Technical
+- Expand `EXERCISE_VECTORS` in `exerciseVectors.ts` from 16 to 50+ exercises
+- Add `EQUIPMENT_CORRELATIONS` map: equipment type → strength correlation factor (barbell > dumbbell > cable > machine, due to stabilization requirements)
+- Add `MUSCLE_TARGET_DISTRIBUTION` per exercise: `{ primary: 1.0, secondary: 0.5, ... }`
+- Keep vectors hardcoded in code (no API, maintain 100% client-side principle)
+
+---
+
 ## Phase 7 — Production Deployment | PAUSED
 
 **Goal**: Deploy to static hosting with proper config.
 
-> **Status**: Paused until Phases 9 and 10 are complete.
+> **Status**: Paused until Phases 11-14 are complete.
 
 ### Targets
 - **Primary**: Vercel
@@ -303,6 +410,10 @@ npx vercel --prod   # Production deployment
 | 8 | *(none)* |
 | 9 | *(none - pure JS math, no external deps)* |
 | 10 | *(none - uses existing Phase 3 date utils)* |
+| 11 | *(none - visual/style changes)* |
+| 12 | *(none — uses existing Audio API + Page Visibility API)* |
+| 13 | *(none)* |
+| 14 | *(none)* |
 | 7 | *(none)* |
 
 ---
@@ -322,7 +433,11 @@ Each phase must pass before starting the next:
 | 6 | Lighthouse PWA >=90, installs on iOS Safari, offline works |
 | 8 | Templates save/load, previous sets pre-fill, no modal overlays |
 | 9 | Cosine similarity vectors computed client-side, exercise suggestions render, equipment filtering, in-workout swap ✓ |
-| 10 | Weekly volume aggregates correctly, fractional muscle multipliers applied |
+| 10 | Weekly volume aggregates correctly, fractional muscle multipliers applied, overtraining/undertraining detection, muscle balance analysis ✓ |
+| 11 | All screens rebuilt per Apple design system, builds pass, lighthouse >=90 |
+| 12 | Timer plays sound on rest end, continues in background, persists across tabs |
+| 13 | Templates deletable/editable, persistence verified, progress graph plots all data points |
+| 14 | 50+ exercises in library with equipment correlations and muscle distributions |
 | 7 | Live on HTTPS, cache headers correct, preview deployments work |
 
 ---
@@ -337,6 +452,21 @@ Each phase must pass before starting the next:
 
 ---
 
-## Project Status: **Phase 9 Complete | Phase 10 Scoped | Phase 7 Paused**
+## Project Status: **Phase 10 Complete | Phase 11 Next (UI Redesign) | Phases 12-14 Planned | Phase 7 Paused**
 
-Phase 8 (Custom Template Engine) is fully complete. Phase 9 (Local Vector Recommendation Engine) is now complete — vector math, embeddings, `useRecommendations` hook, v4 database migration, equipment preferences, in-workout exercise swap, and Analytics integration are all done. Phase 10 (Weekly Volume Load Tracking) is scoped and ready to execute. Phase 7 (Production Deployment) remains paused until both Phases 9 and 10 are complete.
+Phase 8 (Custom Template Engine) is fully complete. Phases 9 (Local Vector Recommendation Engine) and 10 (Weekly Volume Load Tracking) are now complete. **Phase 11 (UI Redesign) is the next phase** — a complete visual rebuild from scratch following Apple design principles. Phases 12-14 address remaining user feedback items. Phase 7 (Production Deployment) is paused until Phase 14 is complete.
+
+### User Feedback Mapping
+| Feedback | Phase |
+|----------|-------|
+| "Redesign UI to be more appealing using /apple-design skill" | 11 |
+| "Add sound/Alert when set rest countdown ends" | 12 |
+| "Make timer countdown even when out of the app" | 12 |
+| "Make timer visible on Home Screen" | 12 |
+| "Timer persistence - if I go to a different tab within the app, the timer needs to continue" | 12 |
+| "Delete / edit workout templates" | 13 |
+| "Template save not persistent" | 13 |
+| "The shadow notes from last time we did that workout shit populate INSIDE the type field for this workout" | 13 |
+| "Progress tracker graph only displays first and last time that exercise was done, doesn't plot everything" | 13 |
+| "Increase exercise selection" | 14 |
+| "find premade database of exercises plus muscle group target distribution plus mbe strength correlation between cable/machine/dumbell/barbell" | 14 |

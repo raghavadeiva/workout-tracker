@@ -44,10 +44,18 @@ I got tired of using my notes app to keep track of my gym progress. I went from 
 - **Epley formula**: `1RM = weight × (1 + reps / 30)`
 
 ### 🧠 Cosine Similarity Recommendation Engine
-- **Vector-based exercise profiling** — 20-dimension movement pattern vectors
-- **Real-time suggestions** — ranks template/library exercises by biomechanical similarity
-- **Muscle group & plane-of-motion awareness** — balances push/pull, vertical/horizontal
-- **Zero external API** — all computation client-side, instant, private
+|- **Vector-based exercise profiling** — 20-dimension movement pattern vectors
+|- **Real-time suggestions** — ranks template/library exercises by biomechanical similarity
+|- **Muscle group & plane-of-motion awareness** — balances push/pull, vertical/horizontal
+|- **Equipment-aware filtering** — only suggests exercises matching your available gear
+|- **In-workout exercise swap** — tap the replace icon on any exercise card to find alternatives
+|- **Zero external API** — all computation client-side, instant, private
+
+### 📊 Weekly Volume & Balance Tracking
+|- **Fractional muscle activation** — each exercise maps to muscle groups with weighted multipliers
+|- **ISO week bucketing** — volume aggregated per muscle group per week
+|- **Overtraining/undertraining alerts** — flags muscles with excessive or insufficient weekly volume
+|- **Muscle balance analysis** — identifies imbalanced muscle development from volume distribution
 
 ### 📱 PWA & Mobile Excellence
 - **Installable on iOS Safari** — `display: standalone`, no URL bar
@@ -144,20 +152,20 @@ src/
 │   └── useRestTimer.ts      # 90s auto-timer with adjust/dismiss
 ├── features/
 │   ├── workout/
-│   │   ├── components/      # WorkoutSession, ExerciseCard, SetInput, SetRow, RestTimerBanner
-│   │   ├── types/
-│   │   │   └── workout.ts   # Exercise, SetEntry, WorkoutSession, WeightUnit types
-│   │   └── ...
+│   │   └── components/      # WorkoutSession, ExerciseCard, SetInput, SetRow, RestTimerBanner
 │   ├── history/
 │   │   └── components/      # History list, WorkoutDetail
 │   ├── analytics/
-│   │   ├── components/      # Analytics (1RM charts + recommendations)
+│   │   ├── components/      # Analytics (1RM charts + recommendations + volume)
 │   │   ├── plateauDetection.ts
 │   │   └── utils/math.ts
 │   ├── recommendations/
-│   │   ├── vectorUtils.ts       # dot product, magnitude, cosine similarity
-│   │   ├── exerciseVectors.ts   # 20-dim embedding vectors, getRecommendations()
-│   │   └── useRecommendations.ts # reactive hook with memoization + equipment filtering
+│   │   ├── vectorUtils.ts         # dot product, magnitude, cosine similarity
+│   │   ├── exerciseVectors.ts     # 20-dim embedding vectors, getRecommendations()
+│   │   ├── useRecommendations.ts  # reactive hook with memoization + equipment filtering
+│   │   └── components/
+│   │       ├── ExerciseSwap.tsx   # swap button + dropdown with alternatives
+│   │       └── EquipmentPreferences.tsx # equipment toggle panel
 │   └── volume/
 │       ├── muscleMaps.ts    # Fractional muscle activation multipliers
 │       ├── volumeUtils.ts   # calculateWeeklyVolume, getLatestWeekVolumes
@@ -191,6 +199,23 @@ src/
 | **Time to Interactive** | < 2s on 3G |
 | **Offline load** | Instant (precache) |
 | **Recommendation latency** | < 5ms |
+
+---
+
+## Roadmap
+
+### ✅ Complete
+Phases 0-10 — Foundation, persistence, history, rest timer, analytics, PWA, templates, vector recommendations, weekly volume tracking
+
+### 📋 Next (Phases 11-14)
+| Phase | Focus | User Feedback |
+|-------|-------|---------------|
+| 11 | UI Redesign | Complete visual rebuild from scratch following Apple design principles |
+| 12 | Timer & Notification Fixes | Sound on rest end, background countdown, home screen widget, tab-switch persistence |
+| 13 | Template & History Fixes | Edit/delete templates, fix persistence bug, fix progress graph to plot all data points |
+| 14 | Exercise Database Expansion | Expand library to 50+ exercises, equipment strength correlations, muscle target distribution |
+
+Phase 7 (Production Deployment) is paused until Phase 14 completes.
 
 ---
 

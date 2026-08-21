@@ -288,5 +288,9 @@ Each logical step = one commit. Message format: `feat(scope): description` / `fi
 | 6 PWA | Lighthouse PWA score >=90, installs on iOS Safari |
 | 8 Templates | Templates save/load, previous sets pre-fill, no modal overlays |
 | 9 Recommendations | Cosine similarity vectors computed client-side, exercise suggestions render |
-| 10 Volume Tracking | Weekly volume aggregates correctly, fractional muscle multipliers applied |
+| 10 Volume Tracking | Weekly volume aggregates correctly, fractional muscle multipliers applied, overtraining/undertraining detection, muscle balance analysis ✓ |
+| 11 UI Redesign | All screens rebuilt per Apple design system, builds pass, lighthouse >=90 |
+| 12 Timer Fixes | Sound alert, background countdown, persists across tabs, home screen visible |
+| 13 Template Fixes | Edit/delete templates, persistence fixed, progress graph plots all points |
+| 14 Exercise DB | 50+ exercises, equipment correlations, muscle distribution |
 | 7 Deploy | Static site serves on Netlify/Vercel/GitHub Pages, HTTPS, cache headers correct |

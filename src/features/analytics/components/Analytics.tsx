@@ -17,6 +17,8 @@ import type { RecommendationResult } from '../../recommendations/exerciseVectors
 import { useWeeklyVolume } from '../../volume/useWeeklyVolume';
 import { MUSCLE_GROUPS, MUSCLE_LABELS } from '../../volume/muscleMaps';
 import type { MuscleGroup } from '../../volume/muscleMaps';
+import { detectVolumeRisks, analyzeMuscleBalance } from '../../volume/volumeUtils';
+import type { VolumeRiskResult, MuscleBalanceResult } from '../../volume/volumeUtils';
 
 function formatDateShort(timestamp: number): string {
   const date = new Date(timestamp);
@@ -69,6 +71,9 @@ export function Analytics() {
   const { recommendations } = useRecommendations(selectedExercise, { topN: 2 });
 
   const { weeklyVolume, isLoading: volumeLoading, error: volumeError } = useWeeklyVolume();
+
+  const volumeRisks = useMemo(() => detectVolumeRisks(history), [history]);
+  const muscleBalance = useMemo(() => analyzeMuscleBalance(history), [history]);
 
   if (isLoading) {
     return (
@@ -311,6 +316,86 @@ export function Analytics() {
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Volume Risk Detection (Overtrained / Undertrained) */}
+      {volumeRisks.length > 0 && (
+        <div className="max-w-md mx-auto px-4 pb-4">
+          <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 px-1">
+            Volume Alerts
+          </h3>
+          <div className="space-y-2">
+            {volumeRisks.map((risk: VolumeRiskResult) => (
+              <div
+                key={risk.muscle}
+                className={`flex items-center justify-between p-3 rounded-xl border ${
+                  risk.risk === 'overtrained'
+                    ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                    : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      risk.risk === 'overtrained' ? 'bg-red-500' : 'bg-amber-500'
+                    }`}
+                  />
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                    {MUSCLE_LABELS[risk.muscle]}
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {risk.label}
+                  </span>
+                </div>
+                <span className="text-sm font-mono text-gray-600 dark:text-gray-300">
+                  {Math.round(risk.volume)} vol
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Muscle Balance Analysis */}
+      {muscleBalance.length > 0 && (
+        <div className="max-w-md mx-auto px-4 pb-8">
+          <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 px-1">
+            Muscle Balance
+          </h3>
+          <div className="space-y-3">
+            {muscleBalance.slice(0, 5).map((m: MuscleBalanceResult) => {
+              const isOver = m.percentage > 15;
+              const isUnder = m.percentage < 5;
+              return (
+                <div key={m.muscle} className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-600 dark:text-gray-400 w-24">
+                      {MUSCLE_LABELS[m.muscle]}
+                    </span>
+                    <span className="text-xs font-mono text-gray-900 dark:text-gray-100">
+                      {Math.round(m.percentage)}%
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-colors ${
+                        isOver
+                          ? 'bg-red-500 dark:bg-red-400'
+                          : isUnder
+                          ? 'bg-amber-500 dark:bg-amber-400'
+                          : 'bg-teal-500 dark:bg-teal-400'
+                      }`}
+                      style={{
+                        width: `${Math.min(m.percentage, 100)}%`,
+                        maxWidth: '100%',
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
