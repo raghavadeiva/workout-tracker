@@ -1,102 +1,166 @@
-/* Phase 11.1 — Global utilities for Apple design system */
-/* Replaces Vite template styles */
+/* Component classes — Stitch styling */
 
-/* ─── Button reset ─────────────────────────────────────────── */
-.btn-reset {
-  background: transparent;
+/* White card, hairline border, soft lift */
+.card {
+  background: var(--color-card);
+  border-radius: var(--radius-card);
+  border: 0.5px solid rgba(209, 209, 214, 0.55);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Primary CTA — black */
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 50px;
+  padding: 0 20px;
+  border-radius: 12px;
+  background: #000000;
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 600;
   border: none;
-  padding: 0;
-  margin: 0;
   cursor: pointer;
-  font-family: inherit;
-  font-size: inherit;
-  color: inherit;
-  -webkit-tap-highlight-color: transparent;
+  transition: opacity 150ms ease, transform 150ms ease, background 200ms ease;
+}
+.btn-primary:hover { opacity: 0.9; }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled {
+  background: var(--color-sunken-high);
+  color: var(--color-faint);
+  cursor: default;
+  transform: none;
+  opacity: 1;
 }
 
-/* ─── Safe area insets ─────────────────────────────────────── */
-.safe-top {
-  padding-top: env(safe-area-inset-top);
+/* Outlined CTA — white w/ blue label (Add Exercise) */
+.btn-outline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 50px;
+  padding: 0 20px;
+  border-radius: 12px;
+  background: var(--color-card);
+  color: var(--color-blue);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 600;
+  border: 1px solid rgba(209, 209, 214, 0.6);
+  cursor: pointer;
+  transition: background 150ms ease, transform 150ms ease;
 }
-.safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-.safe-left {
-  padding-left: env(safe-area-inset-left);
-}
-.safe-right {
-  padding-right: env(safe-area-inset-right);
-}
+.btn-outline:hover { background: var(--color-sunken); }
+.btn-outline:active { transform: scale(0.98); }
 
-/* Utility: padding-bottom with safe area */
-.pb-safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
+/* Finish CTA — emerald */
+.btn-finish {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 50px;
+  padding: 0 20px;
+  border-radius: 12px;
+  background: var(--color-green);
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: opacity 150ms ease, transform 150ms ease;
 }
+.btn-finish:hover { opacity: 0.9; }
+.btn-finish:active { transform: scale(0.98); }
 
-/* ─── Touch highlight suppression ──────────────────────────── */
-.no-tap-highlight {
-  -webkit-tap-highlight-color: transparent;
+/* Segmented control (lbs/kg) — Stitch style */
+.segmented {
+  display: flex;
+  background: var(--color-sunken-high);
+  border-radius: 8px;
+  padding: 3px;
 }
-
-/* ─── Scrollbar — thin variant for inner containers ────────── */
-.scrollbar-thin::-webkit-scrollbar {
-  width: 4px;
-}
-.scrollbar-thin::-webkit-scrollbar-track {
+.segmented > button {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 6px;
   background: transparent;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-secondary);
+  cursor: pointer;
+  transition: all 150ms ease;
 }
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.15);
-  border-radius: 2px;
-}
-@media (prefers-color-scheme: dark) {
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.2);
-  }
-}
-
-/* ─── Material surfaces (translucency) ─────────────────────── */
-.material {
-  background: var(--material-background);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+.segmented > button.on {
+  background: #ffffff;
+  color: #000000;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
-.material-dark {
-  background: var(--material-background-dark);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+/* Stepper field — sunken well, white thumb buttons */
+.stepper-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--color-sunken);
+  border: 0.5px solid rgba(209, 209, 214, 0.55);
+  border-radius: 12px;
+  padding: 4px;
+}
+.stepper-field input {
+  width: 56px;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+  outline: none;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.stepper-field input::-webkit-outer-spin-button,
+.stepper-field input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.stepper-btn {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  color: var(--color-ink);
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease;
+}
+.stepper-btn:active {
+  transform: scale(0.94);
+  background: var(--color-sunken);
 }
 
-/* Dark mode variant for material surfaces — overrides .material background */
-@media (prefers-color-scheme: dark) {
-  .material {
-    background: var(--material-background-dark);
-  }
+/* Hairline separators between sibling rows */
+.row-sep > * + * {
+  border-top: 0.5px solid rgba(209, 209, 214, 0.5);
 }
-
-/* ─── Shadow utility classes ────────────────────────────────── */
-.shadow-elevated {
-  box-shadow: var(--shadow-elevated);
-}
-.shadow-floating {
-  box-shadow: var(--shadow-floating);
-}
-.shadow-popover {
-  box-shadow: var(--shadow-popover);
-}
-
-/* ─── Apple-style tap feedback ─────────────────────────────── */
-.tap-feedback {
-  transition: transform 100ms ease-out;
-}
-.tap-feedback:active {
-  transform: scale(0.97);
-}
-
-/* ─── Disabled state for buttons ───────────────────────────── */
-.btn-disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  pointer-events: none;
+.hairline-b {
+  border-bottom: 0.5px solid rgba(209, 209, 214, 0.5);
 }

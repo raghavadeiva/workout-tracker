@@ -1,128 +1,111 @@
 import { useState } from 'react';
-import { Replace, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRecommendations } from '../../recommendations/useRecommendations';
-import type { RecommendationResult } from '../../recommendations/exerciseVectors';
+import { useRecommendations } from '../useRecommendations';
+import { MaterialIcon } from '../../../components/MaterialIcon';
 
 interface ExerciseSwapProps {
   exerciseName: string;
   availableEquipment: string[];
-  onSwapExercise: (oldName: string, newName: string) => void;
+  onSwap: (newName: string) => void;
 }
 
-/**
- * ExerciseSwap — shows a button that, when clicked, fetches
- * cosine-similarity-based exercise substitution suggestions and
- * allows the user to swap the current exercise for a recommended one.
- *
- * Context-aware: filters by available equipment.
- */
 export function ExerciseSwap({
   exerciseName,
   availableEquipment,
-  onSwapExercise,
+  onSwap,
 }: ExerciseSwapProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedForSwap, setSelectedForSwap] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
 
-  // Fetch recommendations for the current exercise
-  const { recommendations, isLoading, error } = useRecommendations(exerciseName, {
-    topN: 3,
-    availableEquipment:
-      availableEquipment.length > 0 ? availableEquipment : undefined,
-  });
-
-  const handleSwap = (newExercise: string) => {
-    setSelectedForSwap(newExercise);
-    // Small delay for visual feedback before actual swap
-    setTimeout(() => {
-      onSwapExercise(exerciseName, newExercise);
-      setIsOpen(false);
-      setSelectedForSwap(null);
-    }, 150);
-  };
+  // Fetch lazily only while open
+  const { recommendations, isLoading, error } = useRecommendations(
+    open ? exerciseName : null,
+    {
+      topN: 3,
+      availableEquipment:
+        availableEquipment.length > 0 ? availableEquipment : undefined,
+    }
+  );
 
   return (
     <div className="relative">
-      <motion.button
+      <button
         type="button"
-        whileTap={{ scale: 0.9 }}
-        onClick={() => setIsOpen(!isOpen)}
-        className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors tap-feedback"
+        onClick={() => setOpen((o) => !o)}
         aria-label={`Find alternatives for ${exerciseName}`}
+        aria-expanded={open}
+        className="pressable w-8 h-8 flex items-center justify-center rounded-full bg-transparent border-none cursor-pointer hover:bg-sunken"
       >
-        <Replace className="w-4 h-4" />
-      </motion.button>
+        <MaterialIcon name="swap_horiz" size={18} style={{ color: 'var(--color-faint)' }} />
+      </button>
 
       <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.95 }}
-            transition={{ type: 'spring' as const, damping: 1.0, stiffness: 400 }}
-            className="absolute top-full right-0 mt-1 w-56 bg-[--color-surface] dark:bg-gray-800 border border-[--color-separator] dark:border-gray-700 rounded-xl shadow-popover z-50 overflow-hidden"
-          >
-            {/* Header */}
-            <div className="p-3 border-b border-[--color-separator] dark:border-gray-700 flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+        {open && (
+          <>
+            {/* Scrim */}
+            <div
+              className="fixed inset-0 z-30"
+              onClick={() => setOpen(false)}
+              aria-hidden
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.97 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+              className="absolute right-0 top-full mt-1 z-40 w-64 card p-1.5"
+              style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
+              role="menu"
+              aria-label={`Alternatives for ${exerciseName}`}
+            >
+              <span className="section-label block px-2.5 pt-1.5 pb-1">
                 Alternatives
               </span>
-              <motion.button
-                type="button"
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setIsOpen(false)}
-                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded tap-feedback"
-              >
-                <X className="w-3 h-3" />
-              </motion.button>
-            </div>
-
-            {/* Body */}
-            <div className="p-2 max-h-60 overflow-y-auto">
               {isLoading && (
-                <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                  <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
-                  Finding alternatives...
+                <div className="flex items-center gap-2 px-2.5 py-2.5 body-md text-tertiary">
+                  <span
+                    className="inline-block w-4 h-4 rounded-full animate-spin"
+                    style={{
+                      border: '2px solid var(--color-line)',
+                      borderTopColor: 'var(--color-blue)',
+                    }}
+                  />
+                  Finding…
                 </div>
               )}
-
               {error && (
-                <div className="px-3 py-2 text-sm text-red-500">
+                <div className="px-2.5 py-2.5 body-md" style={{ color: 'var(--color-red)' }}>
                   {error}
                 </div>
               )}
-
-              {!isLoading && !error && recommendations && recommendations.length > 0 ? (
-                <div className="space-y-1">
-                  {recommendations.map((rec: RecommendationResult) => (
-                    <motion.button
-                      key={rec.exercise}
-                      type="button"
-                      whileTap={{ scale: 0.97, backgroundColor: 'rgba(0,0,0,0.03)' }}
-                      onClick={() => handleSwap(rec.exercise)}
-                      disabled={selectedForSwap === rec.exercise}
-                      className="w-full flex items-center justify-between px-3 py-2 text-left rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors tap-feedback disabled:opacity-50"
-                    >
-                      <span className="font-medium text-[--color-text-primary]">
-                        {rec.exercise}
-                      </span>
-                      <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
-                        {Math.round(rec.score * 100)}% match
-                      </span>
-                    </motion.button>
-                  ))}
+              {!isLoading && recommendations?.length === 0 && (
+                <div className="px-2.5 py-2.5 body-md text-tertiary">
+                  No alternatives found
                 </div>
-              ) : (
-                !isLoading &&
-                !error && (
-                  <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
-                    No alternatives found
-                  </div>
-                )
               )}
-            </div>
-          </motion.div>
+              {recommendations?.map((rec) => (
+                <button
+                  key={rec.exercise}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onSwap(rec.exercise);
+                    setOpen(false);
+                  }}
+                  className="pressable w-full flex items-center justify-between gap-2 px-2.5 py-2.5 rounded-lg bg-transparent border-none cursor-pointer text-left hover:bg-sunken"
+                >
+                  <span className="text-[15px] font-semibold text-ink truncate">
+                    {rec.exercise}
+                  </span>
+                  <span
+                    className="text-[12px] font-bold tnum flex-shrink-0"
+                    style={{ color: 'var(--color-green-deep)' }}
+                  >
+                    {Math.round(rec.score * 100)}%
+                  </span>
+                </button>
+              ))}
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

@@ -1,325 +1,331 @@
-import { useState, useCallback } from 'react';
-import { Plus, Dumbbell, CheckCircle2, Save } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ExerciseSelector } from './ExerciseSelector';
-import { ExerciseCard } from './ExerciseCard';
+import { useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { SetInput } from './SetInput';
+import { SetRow } from './SetRow';
 import { RestTimerBanner } from './RestTimerBanner';
-import { EquipmentPreferences } from '../../recommendations/components/EquipmentPreferences';
+import { ExerciseSelector } from './ExerciseSelector';
+import { ExerciseSwap } from '../../recommendations/components/ExerciseSwap';
+import { MaterialIcon } from '../../../components/MaterialIcon';
 import { useWorkoutSession } from '../../../hooks/useWorkoutSession';
-import { useRestTimer } from '../../../hooks/useRestTimer';
-import type { Exercise } from '../../../db/database';
+import type { Exercise, WeightUnit, Template } from '../../../db/database';
 
-// Animation variants for staggered children
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.04,
-      delayChildren: 0.04,
-    },
-  },
-} as const;
+const spring = { type: 'spring' as const, stiffness: 400, damping: 34 };
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: 'spring' as const, damping: 1.0, stiffness: 300, restDelta: 0.5 },
-  },
-};
+interface ViewProps {
+  exercises: Exercise[];
+  weightUnit: WeightUnit;
+  availableEquipment: string[];
+  templates: Template[];
+  isLoading: boolean;
+  onAddExercise: (name: string) => void;
+  onLogSet: (exerciseId: string, weight: number, reps: number) => void;
+  onDeleteSet: (exerciseId: string, setId: string) => void;
+  onDeleteExercise: (exerciseId: string) => void;
+  onReorder: (exerciseId: string, direction: 'up' | 'down') => void;
+  onSwap: (exerciseId: string, newName: string) => void;
+  onFinish: () => void;
+  onSaveTemplate: (name: string) => void;
+  onStartTemplate: (template: Template) => void;
+  onSetWeightUnit: (unit: WeightUnit) => void;
+}
 
+/** Self-contained container — App renders <WorkoutSession /> with no props. */
 export function WorkoutSession() {
   const {
     exercises,
     weightUnit,
     setWeightUnit,
     availableEquipment,
-    setAvailableEquipment,
-    isLoading,
     templates,
+    isLoading,
     addExercise,
     logSet,
     deleteSet,
     deleteExercise,
-    swapExercise,
     reorderExercise,
+    swapExercise,
     finishWorkout,
     saveCurrentAsTemplate,
     startFromTemplate,
-    totalSets,
   } = useWorkoutSession();
 
-  const timerProps = useRestTimer();
-
-  // All hooks must go before conditional returns!
-  const [showSelector, setShowSelector] = useState(false);
-
-  const handleAddExercise = useCallback((name: string) => {
-    addExercise(name);
-    setShowSelector(false);
-  }, [addExercise]);
-
-  const logSetAndStartTimer = useCallback(
-    (exerciseId: string, weight: number, reps: number) => {
-      logSet(exerciseId, weight, reps);
-      timerProps.startTimer(90);
-    },
-    [logSet, timerProps]
+  return (
+    <WorkoutSessionView
+      exercises={exercises}
+      weightUnit={weightUnit}
+      availableEquipment={availableEquipment}
+      templates={templates}
+      isLoading={isLoading}
+      onAddExercise={addExercise}
+      onLogSet={logSet}
+      onDeleteSet={deleteSet}
+      onDeleteExercise={deleteExercise}
+      onReorder={reorderExercise}
+      onSwap={(id, newName) => void swapExercise(id, newName)}
+      onFinish={() => void finishWorkout()}
+      onSaveTemplate={(name) => void saveCurrentAsTemplate(name)}
+      onStartTemplate={(t) => void startFromTemplate(t)}
+      onSetWeightUnit={setWeightUnit}
+    />
   );
+}
 
-  const handleSaveAsTemplate = useCallback(() => {
-    const name = window.prompt('Enter template name:');
-    if (name?.trim()) {
-      saveCurrentAsTemplate(name.trim());
-    }
-  }, [saveCurrentAsTemplate]);
+function WorkoutSessionView({
+  exercises,
+  weightUnit,
+  availableEquipment,
+  templates,
+  onAddExercise,
+  onLogSet,
+  onDeleteSet,
+  onDeleteExercise,
+  onReorder,
+  onSwap,
+  onFinish,
+  onSaveTemplate,
+  onStartTemplate,
+  onSetWeightUnit,
+}: ViewProps) {
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const [timerActive, setTimerActive] = useState(false);
+  const [remaining, setRemaining] = useState(0);
 
-  const handleStartFromTemplate = useCallback(
-    (template: (typeof templates)[0]) => {
-      startFromTemplate(template);
-      setShowSelector(false);
-    },
-    [startFromTemplate]
-  );
-
-  // Full-page swap for loading
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[--color-background] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400 font-body">
-            Loading workout...
-          </p>
-        </div>
-      </div>
+  // Rest countdown
+  useEffect(() => {
+    if (!timerActive) return;
+    const id = setInterval(
+      () => setRemaining((r) => (r <= 0 ? 0 : r - 1)),
+      1000
     );
-  }
+    return () => clearInterval(id);
+  }, [timerActive]);
 
-  // Full-page swap for ExerciseSelector (per architecture waR: iOS touch bug)
-  if (showSelector) {
-    return (
-      <ExerciseSelector
-        onSelect={handleAddExercise}
-        onClose={() => setShowSelector(false)}
-        templates={templates}
-        onStartFromTemplate={handleStartFromTemplate}
-      />
-    );
-  }
+  const totalSets = exercises.reduce((n, e) => n + e.sets.length, 0);
 
   return (
-    <div className="min-h-screen bg-[--color-background] font-body text-[--color-text-primary]">
-      {/* Header — translucent material */}
-      <header className="sticky top-0 z-40 flex items-center justify-between gap-3 p-4 material border-b border-[--color-separator] dark:border-gray-800">
-        <div className="flex items-center gap-3">
-          <div className="w-32 h-32 flex-shrink-0 flex items-center justify-center bg-blue-100 dark:bg-blue-900/30 rounded-2xl">
-            <Dumbbell className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </div>
-          <h1 className="text-xl font-bold font-display text-[--color-text-primary]">
-            Active Workout
-          </h1>
-        </div>
-
-        {/* Unit toggle + Save Template */}
-        <div className="flex items-center gap-2">
-          {/* Weight unit segmented control */}
-          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
+    <div className="px-5 pt-3">
+      {/* Header */}
+      <header className="flex items-center justify-between mb-5 gap-3">
+        <h1 className="display-lg text-ink">Workout</h1>
+        <div className="segmented flex-shrink-0" role="group" aria-label="Weight unit">
+          {(['lbs', 'kg'] as WeightUnit[]).map((u) => (
             <button
+              key={u}
               type="button"
-              onClick={() => setWeightUnit('lbs')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all tap-feedback ${
-                weightUnit === 'lbs'
-                  ? 'bg-[--color-surface] dark:bg-gray-700 text-[--color-text-primary] shadow-elevated'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-              }}`}
+              className={weightUnit === u ? 'on' : ''}
+              onClick={() => onSetWeightUnit(u)}
             >
-              lbs
+              {u}
             </button>
-            <button
-              type="button"
-              onClick={() => setWeightUnit('kg')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all tap-feedback ${
-                weightUnit === 'kg'
-                  ? 'bg-[--color-surface] dark:bg-gray-700 text-[--color-text-primary] shadow-elevated'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-              }}`}
-            >
-              kg
-            </button>
-          </div>
-
-          {/* Save as Template Button */}
-          {exercises.length > 0 && (
-            <motion.button
-              type="button"
-              onClick={handleSaveAsTemplate}
-              whileTap={{ scale: 0.9 }}
-              className="p-2 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-colors tap-feedback"
-              aria-label="Save as template"
-            >
-              <Save className="w-5 h-5" />
-            </motion.button>
-          )}
+          ))}
         </div>
       </header>
 
-      {/* Content */}
-      <main className="max-w-md mx-auto px-4 py-4 space-y-4 pb-24">
-        <AnimatePresence>
-          {exercises.length === 0 ? (
-            // ─── Empty State: Show Templates + Start Button ───
-            <motion.div
-              key="empty"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ type: 'spring', damping: 1.0, stiffness: 300 }}
-              className="space-y-4"
+      {/* Empty state */}
+      {exercises.length === 0 ? (
+        <div className="card p-6 text-center">
+          <div
+            className="w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-4"
+            style={{ background: 'var(--color-blue-soft)' }}
+          >
+            <MaterialIcon
+              name="add"
+              size={28}
+              fill={0}
+              style={{ color: 'var(--color-blue)' }}
+            />
+          </div>
+          <h2 className="headline-sm text-ink mb-1">No exercises yet</h2>
+          <p className="body-md text-secondary mb-5 max-w-[30ch] mx-auto">
+            Add your first exercise or start from a saved template.
+          </p>
+          <button
+            type="button"
+            className="btn-primary pressable mb-2.5"
+            onClick={() => setSelectorOpen(true)}
+          >
+            <MaterialIcon name="add" size={20} /> Add Exercise
+          </button>
+          {templates.length > 0 && (
+            <button
+              type="button"
+              className="btn-outline pressable"
+              onClick={() => setSelectorOpen(true)}
             >
-              {/* Template previews */}
-              {templates.length > 0 && (
-                <motion.div
-                  variants={itemVariants}
-                  initial="hidden"
-                  animate="visible"
-                  className="space-y-3"
-                >
-                  <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1">
-                    Your Templates
-                  </h2>
-                  {templates.map((template) => (
-                    <motion.button
-                      key={template.id}
-                      type="button"
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => handleStartFromTemplate(template)}
-                      className="w-full flex items-center justify-between p-4 bg-[--color-surface] dark:bg-gray-800 rounded-2xl border border-[--color-separator] dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left cursor-pointer tap-feedback"
-                    >
-                      <div>
-                        <p className="font-medium text-[--color-text-primary]">
-                          {template.name}
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                          {template.exerciseNames.length} exercise
-                          {template.exerciseNames.length !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-400">
-                        {template.exerciseNames.slice(0, 3).map((exName, i) => (
-                          <span
-                            key={i}
-                            className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full"
-                          >
-                            {exName}
-                          </span>
-                        ))}
-                        {template.exerciseNames.length > 3 && (
-                          <span className="text-xs text-gray-500">
-                            +{template.exerciseNames.length - 3} more
-                          </span>
-                        )}
-                      </div>
-                    </motion.button>
-                  ))}
-                </motion.div>
-              )}
-
-              {/* Start Blank Workout Button */}
-              <motion.button
-                type="button"
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setShowSelector(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-base font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-2xl transition-colors tap-feedback"
-              >
-                <Plus className="w-5 h-5" />
-                Start Blank Workout
-              </motion.button>
-            </motion.div>
-          ) : (
-            // ─── Active Workout State ───
-            <motion.div
-              key="active"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ type: 'spring', damping: 1.0, stiffness: 300 }}
-              className="space-y-4"
-            >
-              {/* Add Exercise Button */}
-              <motion.button
-                type="button"
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setShowSelector(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-base font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-2xl transition-colors tap-feedback"
-              >
-                <Plus className="w-5 h-5" />
-                Add Exercise
-              </motion.button>
-
-              {/* Exercise Cards */}
-              <motion.div
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="space-y-4"
-              >
-                {exercises.map((exercise: Exercise) => (
-                  <motion.div key={exercise.id} variants={itemVariants}>
-                    <ExerciseCard
-                      exercise={exercise}
-                      weightUnit={weightUnit}
-                      availableEquipment={availableEquipment}
-                      onLogSet={logSetAndStartTimer}
-                      onDeleteSet={deleteSet}
-                      onDeleteExercise={deleteExercise}
-                      onSwapExercise={swapExercise}
-                      onReorder={reorderExercise}
-                    />
-                  </motion.div>
-                ))}
-              </motion.div>
-
-              {/* Summary */}
-              <motion.div
-                variants={itemVariants}
-                className="pt-4 border-t border-[--color-separator] dark:border-gray-800"
-              >
-                <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-                  <span>
-                    {exercises.length} exercise
-                    {exercises.length !== 1 ? 's' : ''}
-                  </span>
-                  <span>
-                    {totalSets} set{totalSets !== 1 ? 's' : ''} logged
-                  </span>
-                </div>
-              </motion.div>
-
-              {/* Finish Workout Button */}
-              <motion.button
-                type="button"
-                whileTap={{ scale: 0.97 }}
-                onClick={finishWorkout}
-                className="w-full flex items-center justify-center gap-2 px-4 py-4 text-base font-semibold text-white bg-green-600 hover:bg-green-700 active:bg-green-800 rounded-2xl transition-colors tap-feedback"
-              >
-                <CheckCircle2 className="w-5 h-5" />
-                Finish Workout
-              </motion.button>
-            </motion.div>
+              <MaterialIcon name="bookmark" size={20} /> Browse Templates
+            </button>
           )}
-        </AnimatePresence>
-      </main>
+        </div>
+      ) : (
+        <>
+          {/* Subtitle */}
+          <p className="body-md text-tertiary -mt-3 mb-4">
+            {exercises.length} exercise{exercises.length !== 1 ? 's' : ''} ·{' '}
+            {totalSets} set{totalSets !== 1 ? 's' : ''}
+          </p>
 
-      {/* Rest Timer Banner */}
-      <RestTimerBanner {...timerProps} />
+          {/* Exercise cards */}
+          <AnimatePresence initial={false}>
+            {exercises.map((ex) => (
+              <motion.section
+                key={ex.id}
+                layout
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                transition={spring}
+                className="card p-5 mb-4"
+              >
+                {/* Card header */}
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="headline-sm text-ink truncate pr-2">
+                    {ex.name}
+                  </h2>
+                  <div className="flex items-center gap-0.5 flex-shrink-0 -mr-1.5">
+                    <ExerciseSwap
+                      exerciseName={ex.name}
+                      availableEquipment={availableEquipment}
+                      onSwap={(newName: string) => onSwap(ex.id, newName)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => onReorder(ex.id, 'up')}
+                      disabled={exercises[0]?.id === ex.id}
+                      aria-label={`Move ${ex.name} up`}
+                      className="pressable w-8 h-8 flex items-center justify-center rounded-full bg-transparent border-none cursor-pointer disabled:opacity-25 hover:bg-sunken"
+                    >
+                      <MaterialIcon name="arrow_upward" size={18} style={{ color: 'var(--color-faint)' }} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onReorder(ex.id, 'down')}
+                      disabled={exercises[exercises.length - 1]?.id === ex.id}
+                      aria-label={`Move ${ex.name} down`}
+                      className="pressable w-8 h-8 flex items-center justify-center rounded-full bg-transparent border-none cursor-pointer disabled:opacity-25 hover:bg-sunken"
+                    >
+                      <MaterialIcon name="arrow_downward" size={18} style={{ color: 'var(--color-faint)' }} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDeleteExercise(ex.id)}
+                      aria-label={`Remove ${ex.name}`}
+                      className="pressable w-8 h-8 flex items-center justify-center rounded-full bg-transparent border-none cursor-pointer hover:bg-red-soft"
+                    >
+                      <MaterialIcon name="delete" size={18} style={{ color: 'var(--color-red)' }} />
+                    </button>
+                  </div>
+                </div>
 
-      {/* Equipment Preferences */}
-      <EquipmentPreferences
-        availableEquipment={availableEquipment}
-        onSetAvailableEquipment={setAvailableEquipment}
+                {/* Last time ghost */}
+                {ex.previousSets && ex.previousSets.length > 0 && (
+                  <div
+                    className="rounded-xl px-4 py-3 mb-4 flex justify-between items-center"
+                    style={{
+                      background: 'var(--color-sunken)',
+                      border: '0.5px solid rgba(209,209,214,0.4)',
+                    }}
+                  >
+                    <span className="body-md font-medium text-secondary">
+                      Last time
+                    </span>
+                    <span className="text-[15px] font-semibold tnum">
+                      {ex.previousSets.length} ×{' '}
+                      {ex.previousSets[0]?.weight} {weightUnit} ×{' '}
+                      {ex.previousSets[0]?.reps}
+                    </span>
+                  </div>
+                )}
+
+                {/* Logged sets */}
+                {ex.sets.length > 0 && (
+                  <div className="mb-5">
+                    <AnimatePresence initial={false}>
+                      {[...ex.sets].reverse().map((s, i) => (
+                        <SetRow
+                          key={s.id}
+                          setNumber={ex.sets.length - i}
+                          weight={s.weight}
+                          reps={s.reps}
+                          weightUnit={weightUnit}
+                          onDelete={() => onDeleteSet(ex.id, s.id)}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                )}
+
+                {/* Set logger */}
+                <SetInput
+                  exerciseName={ex.name}
+                  previousWeight={
+                    ex.sets.at(-1)?.weight ?? ex.previousSets?.at(-1)?.weight
+                  }
+                  previousReps={
+                    ex.sets.at(-1)?.reps ?? ex.previousSets?.at(-1)?.reps
+                  }
+                  nextSetNumber={ex.sets.length + 1}
+                  weightUnit={weightUnit}
+                  onLogSet={(w, r) => {
+                    onLogSet(ex.id, w, r);
+                    setRemaining(90);
+                    setTimerActive(true);
+                  }}
+                />
+              </motion.section>
+            ))}
+          </AnimatePresence>
+
+          {/* Bottom actions */}
+          <div className="flex flex-col gap-3 mt-5 mb-2">
+            <button
+              type="button"
+              className="btn-outline pressable"
+              onClick={() => setSelectorOpen(true)}
+            >
+              <MaterialIcon name="add" size={20} /> Add Exercise
+            </button>
+            <button
+              type="button"
+              className="btn-finish pressable"
+              onClick={onFinish}
+            >
+              Finish Workout
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const name = window.prompt('Template name', 'My Workout');
+                if (name?.trim()) onSaveTemplate(name.trim());
+              }}
+              className="pressable w-full flex items-center justify-center gap-1.5 py-2 bg-transparent border-none cursor-pointer body-md font-medium"
+              style={{ color: 'var(--color-blue)' }}
+            >
+              <MaterialIcon name="bookmark_add" size={18} /> Save as template
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Modals */}
+      {selectorOpen && (
+        <ExerciseSelector
+          templates={templates}
+          onSelect={(name: string) => {
+            onAddExercise(name);
+            setSelectorOpen(false);
+          }}
+          onStartTemplate={(t: Template) => {
+            onStartTemplate(t);
+            setSelectorOpen(false);
+          }}
+          onClose={() => setSelectorOpen(false)}
+        />
+      )}
+      <RestTimerBanner
+        isActive={timerActive}
+        timeRemaining={remaining}
+        adjustTime={(d) => setRemaining((r) => Math.max(0, r + d))}
+        stopTimer={() => setTimerActive(false)}
       />
     </div>
   );

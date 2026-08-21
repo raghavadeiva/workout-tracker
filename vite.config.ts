@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'Hypertrophy',
         short_name: 'Hypertrophy',
-        theme_color: '#000000',
+        theme_color: '#F5F5F7',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait',

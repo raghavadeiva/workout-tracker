@@ -545,9 +545,17 @@ Each phase must pass before starting the next:
 
 ---
 
-## Project Status: **Phase 11 Complete | Phase 12 Next (Timer Fixes) | Phases 13-14 Planned | Phase 7 Paused**
+## Project Status: **Phase 11 Complete (UI Revamp — Light Theme) | Phase 12 Next (Timer Fixes) | Phases 13-14 Planned | Phase 7 Paused**
 
-Phase 8 (Custom Template Engine) is fully complete. Phases 9 (Local Vector Recommendation Engine), 10 (Weekly Volume Load Tracking), and 11 (UI Redesign) are now complete. **Phase 12 (Timer & Notification Fixes) is the next phase** — implementing sound alerts, background countdown, home screen visibility, and tab-switch timer persistence. Phases 13-14 address remaining user feedback items. Phase 7 (Production Deployment) is paused until Phase 14 is complete.
+Phase 8 (Custom Template Engine) is fully complete. Phases 9 (Local Vector Recommendation Engine), 10 (Weekly Volume Load Tracking), and 11 (UI Redesign — Light Theme Revamp) are now complete. **Phase 12 (Timer & Notification Fixes) is the next phase** — implementing sound alerts, background countdown, home screen visibility, and tab-switch timer persistence. Phases 13-14 address remaining user feedback items. Phase 7 (Production Deployment) is paused until Phase 14 is complete.
+
+### Phase 11 Revamp Summary
+- **Completely scrapped dark theme** — rebuilt from scratch using a **light-only theme** per `ui-ux-pro-max` skill guidance (Vibrant & Block-based, energy orange + success green palette, Barlow fonts)
+- **Fixed tab bounce** — all tabs stay mounted with opacity/pointerEvents cross-fade (no unmount/remount)
+- **Mobile viewport fix** — uses `100dvh` instead of `100vh` to prevent browser chrome resize bounce
+- **Z-index scale** — uses `z-10/z-20/z-30/z-40/z-50` per ui-ux-pro-max guidelines (no arbitrary values)
+- **Font stack** — Barlow (body) + Barlow Condensed (display) from Google Fonts
+- **Color palette** — energy orange (#F97316) primary, success green (#22C55E) accent, Tailwind grays for neutrals
 
 ### User Feedback Mapping
 | Feedback | Phase |

@@ -1,161 +1,136 @@
 import { useState } from 'react';
-import { ChevronLeft, Dumbbell, Plus } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { MaterialIcon } from '../../../components/MaterialIcon';
 import type { Template } from '../../../db/database';
 
 const COMMON_EXERCISES = [
-  'Bench Press',
-  'Squat',
-  'Deadlift',
-  'Overhead Press',
-  'Barbell Row',
-  'Pull-ups',
-  'Dips',
-  'Incline Bench Press',
-  'Romanian Deadlift',
-  'Front Squat',
-  'Lunges',
-  'Leg Press',
-  'Lat Pulldown',
-  'Seated Cable Row',
-  'Dumbbell Press',
-  'Lateral Raises',
-  'Bicep Curls',
-  'Tricep Extensions',
-  'Face Pulls',
-  'Calf Raises',
+  'Bench Press', 'Squat', 'Deadlift', 'Overhead Press', 'Barbell Row',
+  'Pull-ups', 'Dips', 'Incline Bench Press', 'Romanian Deadlift',
+  'Front Squat', 'Lunges', 'Leg Press', 'Lat Pulldown', 'Seated Cable Row',
+  'Dumbbell Press', 'Lateral Raises', 'Bicep Curls', 'Tricep Extensions',
+  'Face Pulls', 'Calf Raises',
 ];
 
 interface ExerciseSelectorProps {
+  templates: Template[];
   onSelect: (name: string) => void;
+  onStartTemplate: (template: Template) => void;
   onClose: () => void;
-  templates?: Template[];
-  onStartFromTemplate?: (template: Template) => void;
 }
 
 export function ExerciseSelector({
+  templates,
   onSelect,
+  onStartTemplate,
   onClose,
-  templates = [],
-  onStartFromTemplate,
 }: ExerciseSelectorProps) {
   const [query, setQuery] = useState('');
 
   const filtered = COMMON_EXERCISES.filter((ex) =>
     ex.toLowerCase().includes(query.toLowerCase())
   );
-
-  const handleSelect = (name: string) => {
-    onSelect(name);
-    onClose();
-  };
-
-  const hasTemplates = templates.length > 0;
-  const hasQuery = query.length > 0;
-  const showTemplates = hasTemplates && !hasQuery;
+  const showTemplates = query.length === 0 && templates.length > 0;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ type: 'spring' as const, damping: 1.0, stiffness: 300 }}
-      className="min-h-screen bg-[--color-background] font-body text-[--color-text-primary] flex flex-col"
-    >
-      {/* Header — translucent material */}
-      <header className="sticky top-0 z-10 flex items-center gap-3 p-4 border-b border-[--color-separator] dark:border-gray-700 material">
-        <motion.button
+    <div className="fixed inset-0 z-50 bg-app flex flex-col" role="dialog" aria-label="Add exercise">
+      {/* Top bar */}
+      <header
+        className="relative flex items-center justify-center bg-app"
+        style={{ height: 56, paddingTop: 'env(safe-area-inset-top)' }}
+      >
+        <button
           type="button"
-          whileTap={{ scale: 0.9 }}
           onClick={onClose}
-          className="p-2 -ml-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700 cursor-pointer tap-feedback"
-          aria-label="Back"
+          aria-label="Close"
+          className="pressable absolute left-2 w-11 h-11 flex items-center justify-center rounded-full bg-transparent border-none cursor-pointer"
         >
-          <ChevronLeft className="w-6 h-6" />
-        </motion.button>
-        <h1 className="flex-1 text-lg font-semibold font-display text-[--color-text-primary] text-center">
+          <MaterialIcon
+            name="arrow_back_ios_new"
+            size={22}
+            style={{ color: 'var(--color-blue)' }}
+          />
+        </button>
+        <h1
+          className="headline-sm text-ink absolute left-1/2 -translate-x-1/2 bottom-3"
+        >
           Add Exercise
         </h1>
-        <div className="w-10" />
       </header>
 
-      {/* Search */}
-      <div className="p-4 border-b border-[--color-separator] dark:border-gray-700 bg-[--color-surface] dark:bg-gray-900">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search exercises..."
-          className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border-0 rounded-xl text-base text-[--color-text-primary] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          autoComplete="off"
-        />
-      </div>
-
-      {/* Templates section (only when no search query) */}
-      {showTemplates && onStartFromTemplate && (
-        <div className="px-4 py-3 border-b border-[--color-separator] dark:border-gray-700">
-          <h2 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-            Your Templates
-          </h2>
-          <div className="space-y-2">
-            {templates.map((template) => (
-              <motion.button
-                key={template.id}
-                type="button"
-                whileTap={{ scale: 0.97 }}
-                onClick={() => {
-                  onStartFromTemplate(template);
-                  onClose();
-                }}
-                className="w-full flex items-center gap-3 p-3 bg-[--color-surface] dark:bg-gray-800 rounded-xl border border-[--color-separator] dark:border-gray-700 text-left tap-feedback"
-              >
-                <Dumbbell className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-[--color-text-primary] truncate">
-                    {template.name}
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {template.exerciseNames.length} exercise
-                    {template.exerciseNames.length !== 1 ? 's' : ''}
-                  </p>
-                </div>
-                <Plus className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              </motion.button>
-            ))}
-          </div>
+      <div className="flex-1 overflow-y-auto overscroll-contain px-5 pt-4 pb-10">
+        {/* Search */}
+        <div className="relative mb-6">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2">
+            <MaterialIcon name="search" size={22} style={{ color: 'var(--color-faint)' }} />
+          </span>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search exercises"
+            autoFocus
+            className="w-full rounded-xl pl-12 pr-4 py-3 body-lg text-ink placeholder:text-faint outline-none border-none appearance-none focus:ring-1 focus:ring-blue"
+            style={{ background: 'var(--color-sunken-high)' }}
+          />
         </div>
-      )}
 
-      {/* Exercise list or start-blank-workout prompt */}
-      <div className="flex-1 overflow-y-auto">
+        {/* Templates */}
         {showTemplates && (
-          <div className="px-4 py-3 border-b border-[--color-separator] dark:border-gray-700">
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Or browse exercises
-            </p>
-          </div>
+          <section className="mb-7">
+            <h2 className="section-label mb-2 ml-1">Templates</h2>
+            <div className="card row-sep overflow-hidden">
+              {templates.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => onStartTemplate(t)}
+                  className="pressable w-full flex items-center justify-between p-4 bg-card border-none cursor-pointer text-left hover:bg-sunken"
+                >
+                  <span className="min-w-0 pr-3">
+                    <span className="block headline-sm text-ink truncate">
+                      {t.name}
+                    </span>
+                    <span className="block body-md text-secondary mt-1 truncate">
+                      {t.exerciseNames.join(', ')}
+                    </span>
+                  </span>
+                  <MaterialIcon
+                    name="bookmark"
+                    size={22}
+                    style={{ color: 'var(--color-blue)', flexShrink: 0 }}
+                  />
+                </button>
+              ))}
+            </div>
+          </section>
         )}
-        <ul className="divide-y divide-[--color-separator] dark:divide-gray-700">
-          {filtered.map((exercise) => (
-            <li key={exercise}>
-              <motion.button
+
+        {/* Exercises */}
+        <section>
+          <h2 className="section-label mb-2 ml-1">Exercises</h2>
+          <div className="card row-sep overflow-hidden">
+            {filtered.map((ex) => (
+              <button
+                key={ex}
                 type="button"
-                whileTap={{ scale: 0.97, backgroundColor: 'rgba(0,0,0,0.03)' }}
-                onClick={() => handleSelect(exercise)}
-                className="w-full px-4 py-4 text-left text-lg text-[--color-text-primary] dark:active:bg-gray-700 min-h-[56px] cursor-pointer tap-feedback flex items-center"
+                onClick={() => onSelect(ex)}
+                className="pressable w-full flex items-center justify-between p-4 bg-card border-none cursor-pointer text-left hover:bg-sunken"
               >
-                <Dumbbell className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-3 flex-shrink-0" />
-                {exercise}
-              </motion.button>
-            </li>
-          ))}
-          {filtered.length === 0 && (
-            <li className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-              No exercises found
-            </li>
-          )}
-        </ul>
+                <span className="headline-sm text-ink">{ex}</span>
+                <MaterialIcon
+                  name="add"
+                  size={22}
+                  style={{ color: 'var(--color-blue)' }}
+                />
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <div className="p-6 text-center body-md text-tertiary">
+                No exercises match “{query}”
+              </div>
+            )}
+          </div>
+        </section>
       </div>
-    </motion.div>
+    </div>
   );
 }
