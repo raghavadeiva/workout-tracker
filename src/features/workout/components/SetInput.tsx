@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, type KeyboardEvent } from 'react';
-import { Loader2, Check } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface SetInputProps {
   exerciseName: string;
@@ -26,7 +27,7 @@ export function SetInput({
   const weightInputRef = useRef<HTMLInputElement>(null);
   const repsInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus weight input on mount
+  // Auto-focus weight input on mount and when exercise/set number changes
   useEffect(() => {
     weightInputRef.current?.focus();
   }, [exerciseName, nextSetNumber]);
@@ -53,7 +54,7 @@ export function SetInput({
     setIsLogging(true);
     onLogSet(w, r);
 
-    // Reset for next set, pre-fill with current values
+    // Reset for next set: pre-fill weight, clear reps, refocus
     setTimeout(() => {
       setWeight(w);
       setReps('');
@@ -62,13 +63,19 @@ export function SetInput({
     }, 100);
   };
 
-  const canLog = typeof weight === 'number' && typeof reps === 'number' && weight > 0 && reps > 0;
+  const canLog =
+    typeof weight === 'number' && typeof reps === 'number' && weight > 0 && reps > 0;
 
   return (
-    <div className="space-y-3 p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
-      {/* Exercise name + set number */}
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: 'spring', damping: 1.0, stiffness: 300, delay: 0.06 }}
+      className="space-y-3 p-4 bg-[--color-surface] dark:bg-gray-800 rounded-2xl border border-[--color-separator] dark:border-gray-700 shadow-elevated"
+    >
+      {/* Exercise name + set number badge */}
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <h3 className="text-lg font-semibold font-display text-[--color-text-primary]">
           {exerciseName}
         </h3>
         <span className="px-3 py-1 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-full">
@@ -76,36 +83,34 @@ export function SetInput({
         </span>
       </div>
 
-      {/* Inputs row */}
+      {/* Weight + Reps inputs */}
       <div className="grid grid-cols-2 gap-3">
         {/* Weight */}
-        <div className="relative">
+        <div>
           <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
             Weight ({weightUnit})
           </label>
-          <div className="relative">
-            <input
-              ref={weightInputRef}
-              type="number"
-              inputMode="decimal"
-              step={weightUnit === 'lbs' ? 5 : 2.5}
-              min={0}
-              value={weight}
-              onChange={(e) => {
-                const val = e.target.value;
-                setWeight(val === '' ? '' : Number(val));
-              }}
-              onKeyDown={(e) => handleKeyDown(e, 'weight')}
-              disabled={disabled || isLogging}
-              className="w-full px-4 py-3.5 text-2xl font-mono text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-              placeholder="0"
-              autoComplete="off"
-            />
-          </div>
+          <input
+            ref={weightInputRef}
+            type="number"
+            inputMode="decimal"
+            step={weightUnit === 'lbs' ? 5 : 2.5}
+            min={0}
+            value={weight}
+            onChange={(e) => {
+              const val = e.target.value;
+              setWeight(val === '' ? '' : Number(val));
+            }}
+            onKeyDown={(e) => handleKeyDown(e, 'weight')}
+            disabled={disabled || isLogging}
+            className="w-full px-4 py-3.5 text-2xl font-mono text-[--color-text-primary] bg-gray-50 dark:bg-gray-900 border-2 border-[--color-separator] dark:border-gray-700 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            placeholder="0"
+            autoComplete="off"
+          />
         </div>
 
         {/* Reps */}
-        <div className="relative">
+        <div>
           <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
             Reps
           </label>
@@ -123,7 +128,7 @@ export function SetInput({
             }}
             onKeyDown={(e) => handleKeyDown(e, 'reps')}
             disabled={disabled || isLogging}
-            className="w-full px-4 py-3.5 text-2xl font-mono text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3.5 text-2xl font-mono text-[--color-text-primary] bg-gray-50 dark:bg-gray-900 border-2 border-[--color-separator] dark:border-gray-700 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
             placeholder="0"
             autoComplete="off"
           />
@@ -131,10 +136,12 @@ export function SetInput({
       </div>
 
       {/* Log Set Button */}
-      <button
+      <motion.button
+        type="button"
         onClick={handleLogSet}
         disabled={disabled || isLogging || !canLog}
-        className="w-full py-3.5 text-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed rounded-xl transition-colors flex items-center justify-center gap-2"
+        whileTap={{ scale: 0.97 }}
+        className="w-full py-3.5 text-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed rounded-xl transition-colors flex items-center justify-center gap-2 tap-feedback"
       >
         {isLogging ? (
           <>
@@ -147,7 +154,7 @@ export function SetInput({
             Log Set
           </>
         )}
-      </button>
-    </div>
+      </motion.button>
+    </motion.div>
   );
 }
