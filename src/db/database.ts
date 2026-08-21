@@ -51,6 +51,17 @@ export interface ExerciseEmbedding {
   };
 }
 
+/**
+ * Persisted rest-timer state (schema v6).
+ * Stored as an ABSOLUTE end timestamp so background time counts correctly:
+ * remaining = endsAt - Date.now(), regardless of interval throttling.
+ */
+export interface RestTimerRecord {
+  endsAt: number; // absolute epoch ms
+  duration: number; // original total seconds (for progress display)
+  running: boolean;
+}
+
 interface WorkoutDBSchema extends DBSchema {
   activeSession: {
     key: string;
@@ -75,10 +86,15 @@ interface WorkoutDBSchema extends DBSchema {
     value: ExerciseEmbedding;
     indexes: { 'by-exercise': string };
   };
+  timerState: {
+    key: string;
+    value: RestTimerRecord;
+  };
 }
 
 const DB_NAME = 'WorkoutDB';
-const DB_VERSION = 4;
+// v5 skipped (was reserved for volumeMetadata, never built). v6 adds timerState.
+const DB_VERSION = 6;
 
 let dbInstance: IDBPDatabase<WorkoutDBSchema> | null = null;
 
@@ -110,6 +126,11 @@ export async function getDB(): Promise<IDBPDatabase<WorkoutDBSchema>> {
         if (!db.objectStoreNames.contains('recommendations')) {
           const recStore = db.createObjectStore('recommendations', { keyPath: 'exerciseId' });
           recStore.createIndex('by-exercise', 'exerciseId');
+        }
+      }
+      if (oldVersion < 6) {
+        if (!db.objectStoreNames.contains('timerState')) {
+          db.createObjectStore('timerState');
         }
       }
     },
@@ -169,8 +190,14 @@ export async function saveTemplate(template: Template): Promise<void> {
 
 export async function getTemplates(): Promise<Template[]> {
   const db = await getDB();
-  const templates = await db.getAllFromIndex('templates', 'by-last-used');
-  return templates.sort((a, b) => (b.lastUsedAt ?? 0) - (a.lastUsedAt ?? 0));
+  // FIX (Phase 13): previously queried the 'by-last-used' index, but IndexedDB
+  // excludes records whose index key is undefined — freshly created templates
+  // have no lastUsedAt yet, so they vanished after reload ("template save not
+  // persistent"). getAll() + JS sort includes every record unconditionally.
+  const all = await db.getAll('templates');
+  return all.sort(
+    (a, b) => (b.lastUsedAt ?? 0) - (a.lastUsedAt ?? 0) || b.createdAt - a.createdAt
+  );
 }
 
 export async function deleteTemplate(id: string): Promise<void> {
@@ -207,6 +234,26 @@ export async function loadAvailableEquipment(): Promise<string[]> {
   const db = await getDB();
   const prefs = await db.get('settings', 'prefs');
   return prefs?.availableEquipment ?? [];
+}
+
+// ─── Rest Timer Persistence (schema v6) ──────────────────────
+
+const TIMER_KEY = 'active';
+
+export async function saveTimerState(record: RestTimerRecord): Promise<void> {
+  const db = await getDB();
+  await db.put('timerState', record, TIMER_KEY);
+}
+
+export async function loadTimerState(): Promise<RestTimerRecord | null> {
+  const db = await getDB();
+  const record = await db.get('timerState', TIMER_KEY);
+  return record ?? null;
+}
+
+export async function clearTimerState(): Promise<void> {
+  const db = await getDB();
+  await db.delete('timerState', TIMER_KEY);
 }
 
 export async function saveExerciseEmbedding(embedding: ExerciseEmbedding): Promise<void> {

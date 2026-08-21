@@ -28,10 +28,15 @@ export function SetInput({
   const [flash, setFlash] = useState(false);
   const repsRef = useRef<HTMLInputElement>(null);
 
+  // Prefill is seeded at mount (parent keys this component by exercise id +
+  // set count, so it remounts fresh whenever the exercise or set changes).
+  // The effect below only guards against prop drift if the parent reuses
+  // the instance without remounting (defensive; normally a no-op).
+
   useEffect(() => {
     setWeight(previousWeight != null ? String(previousWeight) : '');
-    setReps('');
-  }, [exerciseName, previousWeight, previousReps]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only resync on exercise change
+  }, [exerciseName]);
 
   const step = (field: 'w' | 'r', delta: number) => {
     if (field === 'w') {

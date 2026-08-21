@@ -11,6 +11,7 @@ import {
   seedExerciseEmbeddings,
   generateId,
   createEmptySession,
+  deleteTemplate,
   type WorkoutSession,
   type Exercise,
   type SetEntry,
@@ -203,7 +204,7 @@ export function useWorkoutSession() {
 
   const saveCurrentAsTemplate = useCallback(async (name: string) => {
     if (!session || session.exercises.length === 0) return;
-    
+
     const template: Template = {
       id: generateId(),
       name,
@@ -211,10 +212,27 @@ export function useWorkoutSession() {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    
+
     await saveTemplate(template);
     setTemplates((prev) => [template, ...prev]);
   }, [session]);
+
+  /** Rename a template in place (Phase 13). */
+  const renameTemplate = useCallback(async (id: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    const existing = templates.find((t) => t.id === id);
+    if (!existing) return;
+    const updated: Template = { ...existing, name: trimmed, updatedAt: Date.now() };
+    await saveTemplate(updated);
+    setTemplates((prev) => prev.map((t) => (t.id === id ? updated : t)));
+  }, [templates]);
+
+  /** Delete a template permanently (Phase 13). */
+  const removeTemplate = useCallback(async (id: string) => {
+    await deleteTemplate(id);
+    setTemplates((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
   const startFromTemplate = useCallback(async (template: Template) => {
     // Create new empty session with template name
@@ -270,6 +288,8 @@ export function useWorkoutSession() {
     finishWorkout,
     clearWorkout,
     saveCurrentAsTemplate,
+    renameTemplate,
+    removeTemplate,
     startFromTemplate,
     totalSets,
   };

@@ -33,8 +33,11 @@ export function getExerciseProgression(
     }
   }
 
-  // Sort by date ascending for chart
-  return progression.sort((a, b) => a.date - b.date);
+  // Sort by date ascending for chart; startedAt is ms-precision so ties are
+  // near-impossible, but the id tie-break keeps ordering stable if they occur.
+  return progression.sort(
+    (a, b) => a.date - b.date || a.oneRM - b.oneRM
+  );
 }
 
 export function getAllExerciseNames(history: { exercises: { name: string }[] }[]): string[] {

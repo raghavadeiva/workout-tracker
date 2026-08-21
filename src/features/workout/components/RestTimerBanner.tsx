@@ -1,67 +1,21 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useRef } from 'react';
 import { MaterialIcon } from '../../../components/MaterialIcon';
+import { useRestTimer } from '../../../hooks/useRestTimer';
 
-interface RestTimerBannerProps {
-  timeRemaining: number;
-  isActive: boolean;
-  adjustTime: (seconds: number) => void;
-  stopTimer: () => void;
-}
+/**
+ * Floating rest timer pill. Consumes the app-level RestTimerProvider,
+ * so it renders (and keeps counting) above every tab.
+ */
+export function RestTimerBanner() {
+  const { remaining, isActive, adjustTime, stopTimer } = useRestTimer();
 
-/** Two-tone completion chime via Web Audio (no asset needed). */
-function playChime() {
-  try {
-    const Ctx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext;
-    const ctx = new Ctx();
-    const play = () => {
-      const gain = ctx.createGain();
-      gain.gain.value = 0.12;
-      gain.connect(ctx.destination);
-      [
-        [880, 0],
-        [1174.66, 0.15],
-      ].forEach(([freq, at]) => {
-        const osc = ctx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.value = freq;
-        osc.connect(gain);
-        osc.start(ctx.currentTime + at);
-        osc.stop(ctx.currentTime + at + 0.28);
-      });
-    };
-    if (ctx.state === 'suspended') ctx.resume().then(play);
-    else play();
-  } catch {
-    /* audio unavailable */
-  }
-}
+  // "Rest complete" confirmation shows briefly after zero-crossing
+  const done = isActive && remaining === 0;
 
-export function RestTimerBanner({
-  timeRemaining,
-  isActive,
-  adjustTime,
-  stopTimer,
-}: RestTimerBannerProps) {
-  const firedRef = useRef(false);
+  if (!isActive) return null;
 
-  useEffect(() => {
-    if (isActive && timeRemaining === 0 && !firedRef.current) {
-      firedRef.current = true;
-      playChime();
-      navigator.vibrate?.([40, 60, 40]);
-    }
-    if (!isActive) firedRef.current = false;
-  }, [timeRemaining, isActive]);
-
-  if (!isActive || timeRemaining < 0) return null;
-
-  const done = timeRemaining === 0;
-  const m = Math.floor(Math.max(0, timeRemaining) / 60);
-  const s = Math.max(0, timeRemaining) % 60;
+  const m = Math.floor(remaining / 60);
+  const s = remaining % 60;
 
   return (
     <AnimatePresence>
@@ -70,7 +24,7 @@ export function RestTimerBanner({
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 80, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-        className="fixed left-1/2 -translate-x-1/2 z-20"
+        className="fixed left-1/2 -translate-x-1/2 z-40"
         style={{ bottom: `calc(96px + env(safe-area-inset-bottom))` }}
       >
         <div
@@ -81,7 +35,11 @@ export function RestTimerBanner({
             boxShadow: '0 8px 24px rgba(0,0,0,0.16)',
           }}
           role="timer"
-          aria-label={done ? 'Rest complete' : `Rest timer, ${m} minutes ${s} seconds remaining`}
+          aria-label={
+            done
+              ? 'Rest complete'
+              : `Rest timer, ${m} minutes ${s} seconds remaining`
+          }
         >
           {done ? (
             <span className="body-lg font-semibold pr-3">Rest complete</span>
@@ -92,7 +50,10 @@ export function RestTimerBanner({
               </span>
               <div
                 className="flex items-center"
-                style={{ borderLeft: '1px solid rgba(255,255,255,0.3)', paddingLeft: 4 }}
+                style={{
+                  borderLeft: '1px solid rgba(255,255,255,0.3)',
+                  paddingLeft: 4,
+                }}
               >
                 <button
                   type="button"

@@ -205,17 +205,14 @@ src/
 ## Roadmap
 
 ### ✅ Complete
-Phases 0-10 — Foundation, persistence, history, rest timer, analytics, PWA, templates, vector recommendations, weekly volume tracking
+Phases 0-13 — Foundation, persistence, history, rest timer, analytics, PWA, templates, vector recommendations, weekly volume tracking, **UI redesign (Stitch design system)**, **timestamp-based timer engine**, **template & history fixes (persistence root cause, edit/delete, ghost-bleed)**
 
-### 📋 Next (Phases 11-14)
+### 📋 Next (Phase 14)
 | Phase | Focus | User Feedback |
 |-------|-------|---------------|
-| 11 | UI Redesign | Complete visual rebuild from scratch following Apple design principles |
-| 12 | Timer & Notification Fixes | Sound on rest end, background countdown, home screen widget, tab-switch persistence |
-| 13 | Template & History Fixes | Edit/delete templates, fix persistence bug, fix progress graph to plot all data points |
 | 14 | Exercise Database Expansion | Expand library to 50+ exercises, equipment strength correlations, muscle target distribution |
 
-Phase 7 (Production Deployment) is paused until Phase 14 completes.
+Phase 7 (Production Deployment) unblocks after Phase 14.
 
 ---
 

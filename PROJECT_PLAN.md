@@ -14,9 +14,9 @@
 | 8 | Custom Template Engine | Save/load workout templates, previous set tracking |
 | 9 | Local Vector Recommendation Engine | Cosine similarity exercise substitution vectors |
 | 10 | Weekly Volume Load Tracking | Fractional set volumes per muscle group aggregation |
-| 11 | UI Redesign | Complete visual rebuild from scratch following Apple design principles |
-| 12 | Timer & Notification Fixes | Sound/alert on rest end, background countdown, home screen widget |
-| 13 | Template & History Fixes | Edit/delete templates, persistence fix, progress graph fix |
+| 11 | UI Redesign | Complete visual rebuild — final design ported from Google Stitch (Inter, Material Symbols, light theme) |
+| 12 | Timer & Notification Fixes | Timestamp-based background-accurate timer, persists across tabs/reloads, title + badge visibility |
+| 13 | Template & History Fixes | Persistence root cause fixed (undefined index key), template rename/delete UI, ghost-bleed keyed remount, chart verified |
 | 14 | Exercise Database Expansion | Premade exercise DB, muscle distribution, equipment correlations |
 | 7 | Production Deploy | Static hosting (Vercel), HTTPS, cache headers, monitoring |
 
@@ -274,175 +274,230 @@ volumeMetadata: { exerciseId, muscleMultipliers: Record<string, number> }
 
 ---
 
-## Phase 11 — UI Redesign ✅ COMPLETE (7 subphases)
+## Phase 11 — UI Redesign ✅ COMPLETE (7 subphases, 3 design iterations)
 
-**Goal**: Completely scrap the current UI and rebuild it from scratch following Apple's design principles (using `/apple-design` skill). All existing screens get a full visual overhaul while preserving functionality.
+**Goal**: Completely scrap the old UI and rebuild it. Final design language: **Google Stitch output** — Inter typography, Material Symbols icons, hairline-bordered white cards on a soft gray canvas, black primary CTAs, iOS blue accents. Light theme only.
 
-### Design Reference
-Full design specifications in `src/styles/UI-Design.md` — covers tokens, materials, depth, typography, motion, gestures, and per-screen layouts.
+### Design Evolution (3 iterations)
+1. **v1 — Apple Design System** (`/apple-design` skill): SF Pro fonts, translucent materials. Superseded.
+2. **v2 — ui-ux-pro-max generated**: energy orange + success green, Barlow fonts. Rejected by user ("genuinely ugly") — and root-caused to a **broken Tailwind v4 pipeline**: v3-style `@tailwind` directives silently killed the spacing scale (`px-5`, `p-4`, `gap-*` compiled to nothing), so every layout was unstyled regardless of palette.
+3. **v3 — Stitch port (FINAL)**: user generated designs in Google Stitch and asked to match them. This shipped.
 
-### Apple Design Principles Applied
-- **System font family**: `SF Pro Display` (headings), `SF Pro Text` (body), `SF Mono` (numbers)
-- **Depth-based layering**: solid background → secondary group → elevated translucenth surface
-- **Subtle shadows**: `0px 1px 3px rgba(0,0,0,0.05), 0px 2px 8px rgba(0,0,0,0.08)`
-- **Corner radius**: 16px for cards, 20px for sheets/modals
-- **Color palette**: grayscale base with blue accent (#007AFF / systemBlue)
-- **4px spacing grid** (4, 8, 12, 16, 24, 32)
-- **Spring-based animations**: damping 1.0 default (critically damped), 0.8 for momentum-driven interactions
-- **SF Symbols** equivalents from lucide-react
-- **16ms stagger delay** between sequential element animations
-- **Touch target sizing**: minimum 44x44px
-- **Blur + vibrancy**: `backdrop-filter: blur(20px) saturate(180%)` for floating chrome
+### Final Design System (v3 — Stitch-derived)
+| Token | Value | Usage |
+|-------|-------|-------|
+| Canvas | `#F5F5F7` | App background |
+| Card | `#FFFFFF` + hairline border `rgba(209,209,214,0.55)` + `0 2px 8px rgba(0,0,0,0.04)` | All cards |
+| Sunken | `#F7F3F2` / `#EBE7E7` | Inset panels, stepper wells, segmented track |
+| Ink | `#1C1B1C` | Primary text, primary CTA background |
+| Blue | `#0071E3` | Interactive accents, active tab, chart line |
+| Green | `#10B981` (finish) / `#34C759` (positive delta) | Finish CTA, success flash |
+| Amber | `#FFF8E6` bg + `#FF9500` icon | Plateau banner |
+| Red | `#BA1A1A` | Destructive only |
+| Font | **Inter** 400/500/600/700 (Google Fonts) | Everything |
+| Icons | **Material Symbols Outlined** (ligatures, FILL axis) | Everything |
+| Type scale | display-lg 34 · headline-sm 20 · body-md 15 · label-caps 12 | Utility classes |
+| Numerals | `.tnum` (tabular-nums) | All weight/reps/time columns |
 
-### Files Affected / Created
+### Critical Fix Discovered in Phase 11 (Tailwind v4)
+**v3-style directives break v4 silently.** `@tailwind base/components/utilities` produced a degraded pipeline: layout utilities (`.flex`) compiled but the entire spacing scale did not. Fix: `@import "tailwindcss";`. Also: `App.css` must be imported in `main.tsx`, and bracket-var classes (`bg-[--var]`) do not compile in v4. **After any UI change, verify utilities exist in `dist/assets/*.css`.**
+
+### Files (final state)
 | File | Action |
 |------|--------|
-| `src/styles/tokens.ts` | **CREATE** — typed design tokens |
-| `src/styles/UI-Design.md` | **CREATE** — design reference doc |
-| `src/index.css` | **MODIFY** — base styles, CSS variables, dark mode |
-| `src/App.css` | **MODIFY** — global utilities |
-| `src/App.tsx` | **MODIFY** — Apple-style tab bar, tab content springs |
-| `src/features/workout/components/WorkoutSession.tsx` | **MODIFY** — header, empty state, add button, card container |
-| `src/features/workout/components/ExerciseCard.tsx` | **MODIFY** — header, ghost sets, card styling, swipe scaffold |
-| `src/features/workout/components/SetInput.tsx` | **MODIFY** — input styling, log button, focus chain |
-| `src/features/workout/components/SetRow.tsx` | **MODIFY** — card styling, mono layout |
-| `src/features/workout/components/RestTimerBanner.tsx` | **MODIFY** — pill shape, sound hook prep |
-| `src/features/workout/components/ExerciseSelector.tsx` | **MODIFY** — full-page swap visuals |
-| `src/features/history/components/History.tsx` | **MODIFY** — card rows, empty state |
-| `src/features/history/components/WorkoutDetail.tsx` | **MODIFY** — card sections |
-| `src/features/analytics/components/Analytics.tsx` | **MODIFY** — dropdown, stats, chart, volume, alerts, balance |
-| `src/features/recommendations/components/ExerciseSwap.tsx` | **MODIFY** — trigger + dropdown |
-| `src/features/recommendations/components/EquipmentPreferences.tsx` | **MODIFY** — collapsible chips |
+| `index.html` | **MODIFY** — Inter + Material Symbols font links, theme-color `#F5F5F7` |
+| `src/index.css` | **REWRITE** — `@import "tailwindcss"`, `@theme` tokens, type scale utilities |
+| `src/App.css` | **REWRITE** — `.card`, `.btn-primary/-outline/-finish`, `.segmented`, `.stepper-field`, `.material`, `.tnum` |
+| `src/main.tsx` | **MODIFY** — imports `App.css` (was missing entirely) |
+| `src/components/MaterialIcon.tsx` | **CREATE** — Material Symbols ligature component |
+| `src/App.tsx` | **REWRITE** — permanent pane per tab (`display:none` swap, kills tab bounce), floating pill tab bar with blue filled-circle active state |
+| `src/features/workout/components/WorkoutSession.tsx` | **REWRITE** — container + view split, start screen with Start Workout hero + template quick-start, exercise cards with swap/reorder/delete header, rest timer wiring |
+| `src/features/workout/components/SetInput.tsx` | **REWRITE** — stepper fields (±2.5 lbs / ±1 rep), green "Logged" flash on commit |
+| `src/features/workout/components/SetRow.tsx` | **REWRITE** — tabular layout, spring enter/exit, delete |
+| `src/features/workout/components/RestTimerBanner.tsx` | **REWRITE** — black pill, −15s/+30s, Web Audio two-tone chime at zero, haptics |
+| `src/features/workout/components/ExerciseSelector.tsx` | **REWRITE** — full-screen sheet, search, template + exercise grouped lists |
+| `src/features/history/components/History.tsx` | **REWRITE** — grouped list rows, staggered fade-in |
+| `src/features/history/components/WorkoutDetail.tsx` | **REWRITE** — column-header set tables (SET/WEIGHT/REPS/TIME), sticky header |
+| `src/features/analytics/components/Analytics.tsx` | **REWRITE** — picker dropdown, stat tiles, 1RM chart, volume bars, plateau banner, stacked Push/Pull/Legs balance |
+| `src/features/recommendations/components/ExerciseSwap.tsx` | **REWRITE** — swap icon trigger, spring dropdown with match % |
+| `src/features/workout/components/ExerciseCard.tsx` | **DELETE** — absorbed into WorkoutSession cards |
+| `src/features/recommendations/components/EquipmentPreferences.tsx` | **DELETE** — orphan; equipment filtering lives in useWorkoutSession → ExerciseSwap |
+| `src/styles/tokens.ts` | **DELETE** — superseded by `@theme` in index.css |
+| `lucide-react` | **REMOVED from usage** — all icons now Material Symbols (package still in package.json; safe to uninstall) |
 
 ### Subphases
 
-#### Phase 11.1 — Design System Foundation
-**Goal**: Establish the visual language and token system.
+#### Phase 11.1 — Design System Foundation ✅
+- [x] Tailwind v4 `@theme` tokens in `index.css` (replaces planned `tokens.ts` — CSS-first won)
+- [x] Component classes in `App.css` (`.card`, `.btn-*`, `.segmented`, `.stepper-field`, `.material`, `.tnum`)
+- [x] `App.css` imported in `main.tsx`
+- [x] **Fixed Tailwind v4 spacing-scale breakage** (`@import "tailwindcss"` not `@tailwind` directives)
+- [x] `npm run build` passes; utilities verified in shipped CSS
 
-- [ ] Create `src/styles/tokens.ts` with typed exports: `colors`, `spacing`, `radius`, `shadows`, `motion`, `typography`
-- [ ] Update `src/index.css` with CSS variables for dark/light modes, SF Pro font stack, base layer
-- [ ] Update `src/App.css` with utilities: `btn-reset`, `scrollbar-thin`, `tap-highlight-none`, safe area helpers
-- [ ] Verify: `npm run build` passes
+#### Phase 11.2 — App Shell & Navigation ✅
+- [x] Floating pill tab bar (3 tabs, Material Symbols, blue filled circle = active)
+- [x] **Tab bounce eliminated by construction**: each tab is a permanent absolutely-positioned scroll pane; inactive panes `display:none`. No remounts, per-tab scroll preserved
+- [x] `h-dvh` viewport (not `100vh`) for mobile browser chrome
+- [x] Safe-area insets respected on tab bar and sheets
 
-#### Phase 11.2 — App Shell & Navigation
-**Goal**: Redesign the global layout primitives.
+#### Phase 11.3 — Workout Session & Exercise Components ✅
+- [x] Start screen: "Start Workout" hero button + template quick-start rows; Finish resets to it
+- [x] Exercise cards: swap (recommendations dropdown) / move up / move down / remove header
+- [x] "Last time" ghost panel scoped by exact exercise name
+- [x] SetInput steppers with previous-set pre-fill, Enter-to-move focus chain, green "Logged" flash
+- [x] Rest timer auto-starts at 90s per logged set
+- [x] ExerciseSelector full-screen sheet (search, templates, 20-exercise library)
 
-- [ ] Redesign `src/App.tsx` bottom tab bar: translucent material, 3 tabs, SF Symbols, active indicator, `pb-[env(safe-area-inset-bottom)]`
-- [ ] Add spring transition between tab content swaps (cross-fade + slide, damping 1.0, response 0.3)
-- [ ] Verify: tabs switch cleanly, no visual flash on first load
-- [ ] Verify: `npm run build` passes
+#### Phase 11.4 — History & Detail Screens ✅
+- [x] History: grouped card list, day formatting (Today/Yesterday/weekday/date), duration + set count, chevron
+- [x] WorkoutDetail: column-header tables per exercise with completion times, sticky translucent header
 
-#### Phase 11.3 — Workout Session & Exercise Components
-**Goal**: Rebuild the core workout logging flow with Apple visual language.
+#### Phase 11.5 — Analytics Dashboard ✅
+- [x] Exercise picker dropdown with spring open/close
+- [x] Stat tiles: Current / Best / signed Change (green positive, red negative)
+- [x] Epley 1RM line chart (Recharts, blue, plots all sessions)
+- [x] Weekly volume bars per muscle group
+- [x] Plateau detection banner (amber, warning icon)
+- [x] Volume risk alerts (red overtrained / amber undertrained)
+- [x] Muscle balance: stacked Push/Pull/Legs bar derived from real weekly volume data
 
-- [ ] Redesign `ExerciseSelector`: 44px touch rows, rounded-xl search, active states
-- [ ] Redesign `WorkoutSession`: header with icon circle + segmented control, empty state with template previews, floating "Add Exercise" button
-- [ ] Redesign `ExerciseCard`: restructured header (delete/reorder/swap), strictly-scoped ghost previous sets, 16px radius, subtle shadow, `AnimatePresence` for spring enter/exit
-- [ ] Redesign `SetInput`: large mono inputs, set-number badge, full-width log button (44px min height)
-- [ ] Redesign `SetRow`: mono layout, delete X with spring, rounded-xl card
-- [ ] Redesign `RestTimerBanner`: rounded-full pill, translucent material, timer in 20px mono
-- [ ] Verify: full workout flow works (add exercise, log sets, finish, ghost sets display)
-- [ ] Verify: `npm run build` passes
+#### Phase 11.6 — Recommendations & Preferences ✅
+- [x] ExerciseSwap dropdown: lazy fetch only while open, match %, equipment-filtered
+- [x] EquipmentPreferences **dropped** — orphaned component deleted; filtering flows through `useWorkoutSession` state
 
-#### Phase 11.4 — History & Detail Screens
-**Goal**: Rebuild the history browsing and session detail views.
-
-- [ ] Redesign `History`: card rows with ChevronRight, 44px min height, active state spring
-- [ ] Redesign `WorkoutDetail`: sticky header with back button (28x28 circle), exercise card sections, set list with mono layout
-- [ ] Verify: history list renders correctly, detail view navigates back cleanly
-- [ ] Verify: `npm run build` passes
-
-#### Phase 11.5 — Analytics Dashboard
-**Goal**: Rebuild the progress/analytics screen with proper chart rendering and volume data.
-
-- [ ] Redesign exercise selector dropdown with spring open/close
-- [ ] Redesign stats cards (Current 1RM / All-Time Best) with 2-column grid
-- [ ] **Verify** 1RM chart plots ALL data points (check `getExerciseProgression` returns full series — see Phase 13 bug note)
-- [ ] Redesign Weekly Muscle Volume section: bars with labels, staggered spring on load
-- [ ] Redesign Volume Alerts: colored cards (red overtrained, amber undertrained) with spring drop-in
-- [ ] Redesign Muscle Balance: top-5 deviation bars with color coding
-- [ ] Verify: recommendations show on plateau detection, volume data flows correctly
-- [ ] Verify: `npm run build` passes
-
-#### Phase 11.6 — Recommendations & Preferences
-**Goal**: Redesign the exercise swap and equipment preference components.
-
-- [ ] Redesign `ExerciseSwap`: 28x28 circle trigger, spring dropdown, match % display
-- [ ] Redesign `EquipmentPreferences`: collapsible, chip-style toggles (rounded-full), spring on expand
-- [ ] Verify: equipment filtering works end-to-end (toggle equipment → swap exercises update)
-- [ ] Verify: `npm run build` passes
-
-#### Phase 11.7 — Gestures, Sound Hooks & Polish
-**Goal**: Add gesture interactions, prep for sound (Phase 12), reduced-motion support, and final QA.
-
-- [ ] Scaffold swipe-to-delete on ExerciseCard (drag tracking, threshold, spring reveal)
-- [ ] Scaffold drag-to-reorder with 1:1 tracking (replace up/down button pair)
-- [ ] Add reduced-motion media query support (`@media (prefers-reduced-motion: reduce)`)
-- [ ] Add `navigator.vibrate()` haptics for set logged, timer end, card add/delete
-- [ ] Add sound trigger hook in RestTimerBanner (prep for Phase 12 — `new Audio()` on timer end)
-- [ ] Test on device via `npm run dev -- --host` on iPhone Safari
-- [ ] Lighthouse check: ensure no perf degradation (PWA score >=90)
-- [ ] Verify: `npm run build` passes, `tsc --noEmit` clean
+#### Phase 11.7 — Gestures, Sound & Polish ✅
+- [x] Web Audio two-tone chime in RestTimerBanner (Phase 12 sound item delivered early)
+- [x] Haptics: `navigator.vibrate` on timer end, set logged
+- [x] Reorder via chevron buttons (drag scaffold replaced — honest working UI over fake gesture)
+- [x] Reduced-motion media query
+- [x] Focus-visible rings, aria-labels on all icon buttons, `aria-current` on tabs
 
 ### Known Bugs Noted for Phase 13 (not fixed in Phase 11)
-- **Ghost set bleeding**: Previous set data from one exercise appearing in another's input fields. The redesign scopes `previousSets` by exact exercise `name` match; the persistence-level fix is Phase 13.
-- **Progress chart 2-point bug**: If the 1RM chart still shows only 2 points after this phase, the bug is in chart rendering, not `getExerciseProgression` (which already returns all sessions).
+- **Ghost set bleeding**: Previous set data from one exercise appearing in another's input fields. UI scopes `previousSets` by exact exercise `name` match; the persistence-level fix is Phase 13.
 - **Template persistence**: `saveTemplate` calls `db.put()` correctly — if templates don't persist, the issue is in the hook's `upsert` flow, not the DB write.
+- *(Resolved during Phase 11)*: progress chart now plots all sessions — `getExerciseProgression` returns the full series; the old 2-point symptom did not reproduce after the analytics rebuild. If it recurs, check chart rendering, not the data layer.
 
 ### Milestone Gate (Phase 11)
 | Check | Status |
 |-------|--------|
 | `npm run build` | ✓ exit code 0 |
 | `tsc --noEmit` | ✓ zero errors |
-| All screens rebuilt per Apple design system | ✓ |
-| Gestures scaffolded (swipe delete, drag reorder) | ✓ |
+| `npm run lint` | ✓ (1 pre-existing hook warning, unrelated) |
+| Shipped CSS contains all utilities (spacing + components) | ✓ verified in dist |
+| No dark-mode blocks / stale selectors in bundle | ✓ |
+| All screens rebuilt per Stitch design | ✓ |
+| Tab switching bounce-free | ✓ (pane architecture) |
+| Start Workout entry point | ✓ |
+| Sound on timer end (Web Audio chime) | ✓ (Phase 12 item, delivered early) |
 | Reduced motion respected | ✓ |
-| Haptics on key actions | ✓ |
-| Sound prep wired (Phase 12 ready) | ✓ |
-| Lighthouse PWA >=90 | ✓ |
-| Tested on iPhone via `--host` | ✓ |
+| Dev server serves all modules HTTP 200 | ✓ |
 
 ---
 
-## Phase 12 — Timer & Notification Fixes | TODO
+## Phase 12 — Timer & Notification Fixes ✅ COMPLETE
 
-**Goal**: Fix rest timer behavior for background operation, sound alerts, and home screen visibility.
+**Goal**: Make the rest timer background-accurate, persistent across tabs and reloads, and visible outside the app.
 
 ### Feedback Items
-- "Add sound/Alert when set rest countdown ends"
-- "Make timer countdown even when out of the app"
-- "Make timer visible on Home Screen"
-- "Timer persistence - if I go to a different tab within the app, the timer needs to continue"
+- ~~"Add sound/Alert when set rest countdown ends"~~ — **delivered in Phase 11** (Web Audio chime)
+- "Make timer countdown even when out of the app" → solved via absolute-timestamp architecture
+- "Make timer visible on Home Screen" → document.title countdown + app badge API
+- "Timer persistence - if I go to a different tab within the app, the timer needs to continue" → context at App level + IndexedDB persistence
 
-### Technical
-- Audio API (`new Audio()`) for sound alerts on rest end
-- Keep `setInterval` running with `Page Visibility API` + `requestAnimationFrame` fallback
-- Background sync via Service Worker + Push events for home screen widget
-- Move timer state to top-level (`App.tsx`) so it persists across tab navigation
+### Architecture: Timestamp-Based Engine
+The core insight: a naive `setInterval` decrement drifts when browsers throttle timers in background tabs (iOS Safari can clamp to 1/min or freeze entirely). Instead, the timer stores an **absolute end timestamp** (`endsAt`) and derives the display from it:
 
-### Database Schema v6 (Future)
 ```
-timerState: { key: 'active', value: { exerciseId, startTime, duration, isRunning } }
+remaining = ceil((endsAt − Date.now()) / 1000)
 ```
+
+Time spent in the background counts down correctly by construction — no compensation logic needed. A 250ms interval merely refreshes the display; accuracy comes from the timestamp, not the tick.
+
+### Implementation
+| Concern | Mechanism |
+|---------|-----------|
+| Cross-tab persistence | `RestTimerProvider` context wraps the whole app; banner renders above all tabs |
+| Reload/app-restart persistence | `timerState` store (schema v6): `{ endsAt, duration, running }` written on every state change, restored on mount |
+| Finished-while-closed | On restore, if `endsAt` already passed → show "Rest complete" state briefly, clear record |
+| Background countdown | Timestamp math (see above); visibilitychange handler recomputes instantly on return |
+| Home screen visibility | `document.title = "1:24 · Rest — Hypertrophy"` while running; `navigator.setAppBadge(remaining)` where supported |
+| Alert when hidden at zero | Notification API (permission requested once on first interaction) + chime + haptics |
+| Screen stays awake | Wake Lock API (`screen` type) held while resting and visible; released on hide/complete/stop |
+
+### Files Changed
+| File | Action |
+|------|--------|
+| `src/db/database.ts` | **MODIFY** — schema v6 (`timerState` store), `RestTimerRecord`, save/load/clear functions. Note: v5 was skipped (reserved for volumeMetadata, never built) |
+| `src/hooks/useRestTimer.tsx` | **REWRITE** — old naive-interval hook replaced with context provider engine (`RestTimerProvider` + `useRestTimer()`). File is now `.tsx` (JSX for provider) |
+| `src/hooks/useRestTimer.ts` | **DELETE** — superseded |
+| `src/App.tsx` | **MODIFY** — wraps tree in `RestTimerProvider`, renders `<RestTimerBanner />` globally, requests Notification permission on first interaction |
+| `src/features/workout/components/RestTimerBanner.tsx` | **REWRITE** — consumes context (no props); renders above every tab; z-40 above tab bar |
+| `src/features/workout/components/WorkoutSession.tsx` | **MODIFY** — local timer state removed; calls `startTimer(90)` from context on set log |
+
+### Known Limitations (accepted)
+- **Fully-background countdown** (screen off / app swiped away) still can't *display* — no web platform can guarantee that. What we guarantee: correct elapsed time on return, badge/title while minimized, notification at zero if permission granted.
+- **Home-screen widget** (live countdown on the actual iOS home screen) requires native/Local Push — out of scope for a PWA; the badge + notification are the web-platform equivalent.
+- Timer survives tab switches and reloads within the installed app. It does not survive the PWA being fully killed AND relaunched after `endsAt` passed (shows "Rest complete" briefly instead of counting).
+
+### Milestone Gate (Phase 12)
+| Check | Status |
+|-------|--------|
+| `npm run build` | ✓ exit code 0 |
+| `tsc --noEmit` | ✓ zero errors |
+| All timer modules transform HTTP 200 | ✓ |
+| Timer continues across in-app tab switches | ✓ (context above panes) |
+| Timer restores after reload | ✓ (schema v6 persistence) |
+| Background time counted correctly | ✓ (timestamp-based) |
+| Title/badge visible outside app | ✓ (document.title + setAppBadge) |
+| Sound + haptics at zero | ✓ (chime + vibrate pattern) |
+| Notification when hidden at zero | ✓ (graceful if permission denied) |
 
 ---
 
-## Phase 13 — Template & History Fixes | TODO
+## Phase 13 — Template & History Fixes ✅ COMPLETE
 
-**Goal**: Fix template persistence, add edit/delete, fix previous sets and progress graph issues.
+**Goal**: Fix template persistence, add template edit/delete, fix ghost-set bleeding, verify the progression chart.
 
 ### Feedback Items
-- "Delete / edit workout templates"
-- "Template save not persistent"
-- "The shadow notes from last time we did that workout shit populate INSIDE the type field for this workout" — previous set data bleeding into wrong fields
-- "Progress tracker graph only displays first and last time that exercise was done, doesn't plot everything"
+- "Delete / edit workout templates" → rename + delete on every template row
+- "Template save not persistent" → **root-caused and fixed** (see below)
+- "The shadow notes from last time we did that workout shit populate INSIDE the type field for this workout" → ghost-bleed fixed via keyed remount
+- "Progress tracker graph only displays first and last time..." → verified plotting all sessions; hardened sort
 
-### Technical
-- Audit `saveTemplate` in `database.ts` — ensure `put()` is called correctly and template is committed
-- Template list screen: add edit (rename) and delete with confirmation
-- Fix `getPreviousPerformance` — ensure data maps to correct exercise by name match, not leaking into type fields
-- Fix `getExerciseProgression` in `math.ts` — currently returns only 2 data points (first/last); should return all sessions with date + 1RM
-- Add `deleteTemplate` function to database layer
+### Root Cause: Template Persistence
+`getTemplates()` queried `getAllFromIndex('templates', 'by-last-used')`. IndexedDB **silently excludes records whose index key is `undefined`** — and `lastUsedAt` is only set after a template is first *used*, never at creation. So newly saved templates were written to the store but invisible to the index query: they appeared instantly (local state) then vanished after reload. Exactly the reported symptom.
+
+**Fix**: `getAll()` + JS sort (`lastUsedAt ?? 0`, tie-break on `createdAt`). Every record is returned unconditionally; existing affected templates heal on next load — no migration needed.
+
+### Changes
+| File | Change |
+|------|--------|
+| `src/db/database.ts` | `getTemplates()` — index query → `getAll()` + sort (persistence fix) |
+| `src/hooks/useWorkoutSession.ts` | New `renameTemplate(id, name)` and `removeTemplate(id)` actions, both write-through to DB |
+| `src/features/workout/components/WorkoutSession.tsx` | Template rows on start screen: edit (prompt rename) + delete (confirm) buttons beside quick-start |
+| `src/features/workout/components/ExerciseSelector.tsx` | Same edit/delete affordances in the Templates section |
+| `src/features/workout/components/SetInput.tsx` | Prefill effect narrowed to `[exerciseName]`; seeding now happens at mount |
+| `src/features/analytics/utils/math.ts` | Progression sort hardened with 1RM tie-break |
+
+### Ghost-Set Bleeding Fix
+`SetInput` holds weight/reps in local state seeded from `previousSets` props. When React reused the component instance across exercises, the async `useEffect` resync lagged one frame behind — briefly showing another exercise's numbers, and letting stale values interleave under fast interaction.
+
+**Fix**: the parent now keys each `SetInput` by `` `${ex.id}:${ex.sets.length}` `` — switching exercises (or logging a set) **remounts** the component, which seeds state synchronously from the correct props at first render. The in-component effect is now a defensive no-op in the normal path.
+
+### Chart Verification
+`getExerciseProgression` iterates **all** history sessions and returns one point per session where the exercise has sets — the full series. The old "only first and last" symptom did not reproduce (it dated from a pre-Phase-11 data layer). Sort hardened with a 1RM tie-break for stable ordering when two sessions share a `startedAt`.
+
+### Milestone Gate (Phase 13)
+| Check | Status |
+|-------|--------|
+| `npm run build` | ✓ exit code 0 |
+| `tsc --noEmit` | ✓ zero errors |
+| All Phase 13 modules transform HTTP 200 | ✓ |
+| Templates survive reload (getAll fix) | ✓ |
+| Rename writes through to DB | ✓ |
+| Delete removes from DB + state, with confirm | ✓ |
+| Ghost prefill scoped per exercise (keyed remount) | ✓ |
+| Chart returns full progression series | ✓ |
 
 ---
 
@@ -503,8 +558,8 @@ npx vercel --prod   # Production deployment
 | 8 | *(none)* |
 | 9 | *(none - pure JS math, no external deps)* |
 | 10 | *(none - uses existing Phase 3 date utils)* |
-| 11 | `framer-motion` (springs), `src/styles/tokens.ts` (design tokens), `src/styles/UI-Design.md` (design reference) — 7 subphases: 11.1 Foundation, 11.2 App Shell, 11.3 Workout Components, 11.4 History, 11.5 Analytics, 11.6 Recommendations, 11.7 Gestures & Polish |
-| 12 | *(none — uses existing Audio API + Page Visibility API)* |
+| 11 | `framer-motion` (springs), Material Symbols Outlined (icon font, via index.html), Inter (Google Fonts, via index.html) — 7 subphases all complete; final design ported from Google Stitch |
+| 12 | *(none — uses existing Audio API, Notification API, Wake Lock API, App Badge API)* |
 | 13 | *(none)* |
 | 14 | *(none)* |
 | 7 | *(none)* |
@@ -527,9 +582,9 @@ Each phase must pass before starting the next:
 | 8 | Templates save/load, previous sets pre-fill, no modal overlays |
 | 9 | Cosine similarity vectors computed client-side, exercise suggestions render, equipment filtering, in-workout swap ✓ |
 | 10 | Weekly volume aggregates correctly, fractional muscle multipliers applied, overtraining/undertraining detection, muscle balance analysis ✓ |
-| 11 | 11.1–11.7 all complete: tokens + base styles, app shell, workout/session components, history/detail, analytics, recommendations/preferences, gestures+sound-prep+polish. `npm run build` ✓, `tsc --noEmit` ✓, lighthouse PWA >=90, tested on iPhone via `--host` |
-| 12 | Timer plays sound on rest end, continues in background, persists across tabs |
-| 13 | Templates deletable/editable, persistence verified, progress graph plots all data points |
+| 11 | 11.1–11.7 all complete: Stitch design system (Inter, Material Symbols, light theme), app shell with bounce-free panes + Start Workout screen, workout/session components, history/detail, analytics, recommendations. `npm run build` ✓, `tsc --noEmit` ✓, shipped CSS verified (spacing scale compiles — requires `@import "tailwindcss"` in v4) |
+| 12 | Timestamp-based timer: background-accurate, persists across tabs + reloads (schema v6), title/badge visibility, notification when hidden ✓ |
+| 13 | Persistence root cause fixed (undefined index key in `getTemplates`), rename/delete UI shipped, ghost-bleed fixed via keyed remount, full-series chart verified ✓ |
 | 14 | 50+ exercises in library with equipment correlations and muscle distributions |
 | 7 | Live on HTTPS, cache headers correct, preview deployments work |
 
@@ -545,22 +600,36 @@ Each phase must pass before starting the next:
 
 ---
 
-## Project Status: **Phase 11 Complete (UI Revamp — Light Theme) | Phase 12 Next (Timer Fixes) | Phases 13-14 Planned | Phase 7 Paused**
+## Project Status: **Phase 13 Complete (Template & History Fixes) | Phase 14 Next (Exercise DB Expansion) | Phase 7 Paused**
 
-Phase 8 (Custom Template Engine) is fully complete. Phases 9 (Local Vector Recommendation Engine), 10 (Weekly Volume Load Tracking), and 11 (UI Redesign — Light Theme Revamp) are now complete. **Phase 12 (Timer & Notification Fixes) is the next phase** — implementing sound alerts, background countdown, home screen visibility, and tab-switch timer persistence. Phases 13-14 address remaining user feedback items. Phase 7 (Production Deployment) is paused until Phase 14 is complete.
+Phases 8-13 are complete (Templates, Recommendations, Volume Tracking, UI Redesign, Timer Engine, Template & History Fixes). **Phase 14 (Exercise Database Expansion) is next**: expand the library to 50+ exercises with equipment strength correlations and muscle target distributions. After Phase 14, Phase 7 (Production Deployment) unblocks.
 
-### Phase 11 Revamp Summary
-- **Completely scrapped dark theme** — rebuilt from scratch using a **light-only theme** per `ui-ux-pro-max` skill guidance (Vibrant & Block-based, energy orange + success green palette, Barlow fonts)
-- **Fixed tab bounce** — all tabs stay mounted with opacity/pointerEvents cross-fade (no unmount/remount)
-- **Mobile viewport fix** — uses `100dvh` instead of `100vh` to prevent browser chrome resize bounce
-- **Z-index scale** — uses `z-10/z-20/z-30/z-40/z-50` per ui-ux-pro-max guidelines (no arbitrary values)
-- **Font stack** — Barlow (body) + Barlow Condensed (display) from Google Fonts
-- **Color palette** — energy orange (#F97316) primary, success green (#22C55E) accent, Tailwind grays for neutrals
+### Phase 13 Summary
+- **Template persistence root-caused and fixed**: `getTemplates()` used a `by-last-used` index query, but IndexedDB silently drops records whose index key is `undefined` — fresh templates had no `lastUsedAt`, so they vanished on reload. Now uses `getAll()` + JS sort; existing templates heal automatically.
+- **Template edit/delete**: rename (prompt) + delete (confirm) buttons on every template row, in both the start-screen quick-start list and the exercise selector. Both write through to IndexedDB.
+- **Ghost-set bleeding fixed**: `SetInput` is now keyed by `${exerciseId}:${setCount}` so switching exercises remounts it with the correct prefill synchronously — no more cross-exercise value leaks.
+- **Progress chart verified**: returns one point per session for the full history; sort hardened with a tie-break.
+
+### Phase 12 Summary
+- **Timestamp-based timer engine** (`RestTimerProvider` context at App level): stores absolute `endsAt`, derives display from `Date.now()` — background throttling can't cause drift
+- **Persists across tab switches and reloads** via new `timerState` IndexedDB store (schema v6)
+- **Visible outside the app**: live countdown in `document.title` + app badge (`setAppBadge`) while running
+- **Alerts at zero**: Web Audio chime + haptics always; Notification when the page is hidden (permission asked once on first interaction)
+- **Wake Lock** keeps the screen on during rest; released on hide/complete/cancel
+- Banner renders above all tabs (z-40); WorkoutSession just calls `startTimer(90)` on set log
+
+### Phase 11 Final Summary
+- **Design**: ported from user's Google Stitch output — Inter + Material Symbols, white hairline cards on `#F5F5F7`, black CTAs, iOS blue `#0071E3` accents, light theme only (3 iterations; see Phase 11 section for evolution)
+- **Start screen**: "Start Workout" hero button + template quick-start rows; Finish Workout returns to it
+- **Tab bounce eliminated by construction**: permanent scroll panes per tab, inactive = `display:none`
+- **Tailwind v4 pipeline fixed**: `@import "tailwindcss"` required — v3-style `@tailwind` directives silently killed the spacing scale. Utilities verified present in shipped CSS.
+- **Cleanup**: deleted orphans (`ExerciseCard.tsx`, `EquipmentPreferences.tsx`, `tokens.ts`); lucide-react no longer used anywhere (Material Symbols instead)
+- **Sound delivered early**: Web Audio two-tone chime on rest-timer end (was planned for Phase 12)
 
 ### User Feedback Mapping
 | Feedback | Phase |
 |----------|-------|
-| "Redesign UI to be more appealing using /apple-design skill" | 11 |
+| "Redesign UI to be more appealing" (final: ported from Google Stitch output) | 11 |
 | "Add sound/Alert when set rest countdown ends" | 12 |
 | "Make timer countdown even when out of the app" | 12 |
 | "Make timer visible on Home Screen" | 12 |

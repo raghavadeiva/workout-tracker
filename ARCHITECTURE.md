@@ -46,8 +46,23 @@ Build a lightweight, mobile-first workout tracking application inspired by Setgr
 - **Colocated Types** - Types live near components that use them
 - **Custom Hooks for Logic** - Extract stateful logic into `useX` hooks
 - **Compound Components** - For complex UI (e.g., Select, Modal)
-- **CSS-in-JS via Tailwind** - Utility-first, no CSS modules/styled-components
+- **CSS-in-JS via Tailwind v4** - Utility-first, no CSS modules/styled-components
 - **React 18+ Features** - Concurrent features, Suspense where appropriate
+
+### UI Design System (Phase 11 — Stitch-derived, light theme only)
+- **Fonts**: Inter (Google Fonts, loaded in `index.html`) — no SF Pro/Barlow/system stacks
+- **Icons**: Material Symbols Outlined via `src/components/MaterialIcon.tsx` (ligature names + FILL axis). lucide-react is NOT used.
+- **Tokens**: defined in `@theme` block in `src/index.css` — surfaces (`app/card/sunken/sunken-high`), text tiers (`ink/secondary/tertiary/faint`), semantics (`blue/green/red/orange`)
+- **Component classes**: `src/App.css` — `.card`, `.btn-primary`, `.btn-outline`, `.btn-finish`, `.segmented`, `.stepper-field`, `.material`, `.tnum`, `.row-sep`
+- **Type scale utilities**: `.display-lg`, `.headline-sm`, `.body-md`, `.label-caps`, `.section-label`
+- **waR: Tailwind v4 pipeline**: MUST use `@import "tailwindcss";` in index.css. The v3-style `@tailwind base/components/utilities` directives silently break the spacing scale (`px-5`, `p-4`, `gap-*` generate nothing while `.flex` still works). After any UI change, verify utilities exist in `dist/assets/*.css`.
+- **waR: App.css must be imported** in `main.tsx` or its classes never ship.
+
+### waR: Tab Navigation Architecture (bounce-free)
+Each tab renders into a **permanent absolutely-positioned scroll pane** inside a positioned host; inactive panes get `display:none`.
+- No unmount/remount on tab switch → zero layout shift, per-tab scroll position preserved
+- Do NOT use `AnimatePresence mode="wait"` for tab content — it unmounts the outgoing tab and causes bounce
+- Root uses `h-dvh` (not `100vh`) to avoid mobile browser chrome resize jumps
 
 ### Planned Data-Layer Architecture (IndexedDB)
 ```
@@ -65,7 +80,7 @@ Components -> Custom Hooks -> Service Layer (Repository) -> IndexedDB
 |----------|---------|-----------|
 | **Runtime** | React, ReactDOM, Tailwind, Recharts (Phase 5), idb (Phase 2) | Firebase, Supabase, axios, redux, zustand, mobx |
 | **Dev** | Vite, TypeScript, ESLint, Prettier, Vitest, Playwright | webpack, babel (direct), jest (prefer Vitest) |
-| **UI** | Headless UI / Radix (if needed), lucide-react (icons) | material-ui, chakra, antd, bootstrap |
+| **UI** | Headless UI / Radix (if needed), Material Symbols Outlined (icon font), framer-motion | material-ui, chakra, antd, bootstrap, lucide-react (removed in Phase 11) |
 
 ### Testing Requirements
 - **Unit Tests** - Vitest for hooks, utilities, services (Phase 2+)
@@ -98,14 +113,23 @@ Components -> Custom Hooks -> Service Layer (Repository) -> IndexedDB
 
 ### waR: Database Schema
 **IndexedDB via `idb` wrapper — Database: `WorkoutDB`**
-- Current version: **v4** (Phase 9: added `recommendations` store)
+- Current version: **v6** (v4 added `recommendations`; v5 skipped — reserved for volumeMetadata, never built; v6 added `timerState`)
 - Stores:
   - `activeSession` (key: `'current'`)
   - `settings` (key: `'prefs'`)
   - `history` (keyPath: `id`, index: `by-date` on `startedAt`)
   - `templates` (keyPath: `id`, indexes: `by-name`, `by-last-used`)
   - `recommendations` (keyPath: `exerciseId`, index: `by-exercise`)
+  - `timerState` (key: `'active'`, value: `{ endsAt, duration, running }`)
 - Migrations handled in `upgrade` callback of `openDB`.
+
+### waR: Rest Timer Architecture (Phase 12)
+**Timestamp-based, never interval-decremented.** The timer persists an absolute `endsAt` epoch-ms value; the display is always derived as `ceil((endsAt − Date.now())/1000)`.
+- **Never** store a "seconds remaining" counter and decrement it on tick — browser background throttling makes that drift or freeze.
+- Persisted to `timerState` (schema v6) on every start/adjust; restored on app mount. If restored after `endsAt` passed → show "Rest complete" briefly, clear the record.
+- Lives in `RestTimerProvider` context at App level (`src/hooks/useRestTimer.tsx`) so it survives in-app tab switches; banner renders globally above all panes.
+- Side effects at zero-crossing fire exactly once per run (`firedRef` guard): chime + haptics + Notification (only if `document.hidden` + permission granted).
+- While running: `document.title` shows the countdown; `navigator.setAppBadge(remaining)` where supported; Wake Lock held while visible, released on hide/complete/stop.
 
 ### waR: React Rules of Hooks
 **Always initialize hooks at the very top of the component, before any conditional returns.**
@@ -124,6 +148,15 @@ if (showSelector) return <Selector />;
 - Templates are first-class entities in `templates` store (separate from `history`)
 - Starting from template copies exercises into active session (no history linkage)
 - Previous set pre-fill reads from `history` store (last session per exercise)
+
+### waR: IndexedDB Index Keys Must Never Be Undefined
+**Index queries silently EXCLUDE records whose indexed property is `undefined`.** This caused the Phase 13 "template save not persistent" bug: `getTemplates()` queried the `by-last-used` index, but fresh templates have no `lastUsedAt` until first use — written to the store, invisible to the query.
+- Rule: before querying a non-keyPath index, guarantee every record has that property defined at write time, **or** use `getAll()` + JS sort.
+- `getTemplates()` now uses `getAll()` with `(lastUsedAt ?? 0)` sorting — keep it that way.
+- Applies to any future store where an optional field is indexed.
+
+### waR: SetInput Prefill Seeding
+**Prefill state must be seeded synchronously at mount, not via effect resync.** `SetInput` is keyed by `` `${exerciseId}:${setCount}` `` in WorkoutSession so it remounts whenever the exercise or set count changes — local weight/reps state initializes from the correct exercise's data on first render. Do not remove the key or reintroduce an effect that copies `previousWeight/previousReps` into state on every prop change; that pattern lagged a frame behind and leaked values across exercises ("ghost bleeding").
 
 ---
 
@@ -181,9 +214,12 @@ src/features/recommendations/
   exerciseVectors.ts        # 20-dim embeddings, getRecommendations()
   useRecommendations.ts     # reactive hook with memoization + equipment filtering
   components/
-    ExerciseSwap.tsx        # swap button + dropdown with alternatives (in ExerciseCard)
-    EquipmentPreferences.tsx # collapsible equipment toggle panel (in WorkoutSession)
+    ExerciseSwap.tsx        # swap icon button + spring dropdown with alternatives
+                            # (rendered in each exercise card header; lazy-fetches
+                            # only while open; equipment filter from useWorkoutSession)
 ```
+> Note: `EquipmentPreferences.tsx` was removed in Phase 11. Equipment selection state lives in
+> `useWorkoutSession` (persisted to the `settings` store); ExerciseSwap consumes it via props.
 
 ### Plateau Detection
 
@@ -254,6 +290,50 @@ src/features/volume/
 
 ---
 
+## Phase 11 — UI Redesign (COMPLETE)
+
+### waR: Design System (Stitch-derived, light theme only)
+**Final design ported from the user's Google Stitch output after 3 iterations** (Apple-style → ui-ux-pro-max generated → Stitch). Do not reintroduce dark mode, SF Pro, Barlow, lucide-react, or energy-orange theming.
+
+| Layer | Implementation |
+|-------|----------------|
+| Fonts | Inter 400/500/600/700, loaded via `<link>` in `index.html` |
+| Icons | Material Symbols Outlined font, wrapped by `src/components/MaterialIcon.tsx` (props: `name`, `size`, `fill`) |
+| Tokens | `@theme` block in `src/index.css`: `--color-app #F5F5F7`, `--color-card #FFF`, `--color-sunken #F7F3F2`, `--color-sunken-high #EBE7E7`, `--color-ink #1C1B1C`, `--color-blue #0071E3`, `--color-green #10B981`, `--color-red #BA1A1A`, `--color-orange #FF9500` |
+| Component classes | `src/App.css`: `.card` (white, hairline border, soft shadow), `.btn-primary` (black), `.btn-outline` (white/blue label), `.btn-finish` (emerald), `.segmented` (iOS-style), `.stepper-field` (sunken well + white thumb buttons), `.material` (blur bar), `.tnum` (tabular numerals), `.row-sep` (hairline separators) |
+| Type scale | `.display-lg` 34px, `.headline-sm` 20px, `.body-md` 15px, `.label-caps` 12px caps, `.section-label` |
+
+### waR: Component Architecture (post-Phase 11)
+```
+src/App.tsx                          # Pane-per-tab shell + floating pill tab bar
+src/components/MaterialIcon.tsx      # Material Symbols wrapper
+src/features/workout/components/
+  WorkoutSession.tsx                 # Container (useWorkoutSession + started flag)
+                                     #   └ WorkoutSessionView (start screen | session | empty-in-progress)
+  ExerciseSelector.tsx               # Full-screen sheet (search, templates, library)
+  SetInput.tsx                       # Steppers + Log Set button (green flash on commit)
+  SetRow.tsx                         # Logged set row with spring enter/exit
+  RestTimerBanner.tsx                # Black pill timer, Web Audio chime, haptics
+src/features/history/components/
+  History.tsx                        # HistoryScreen (list → WorkoutDetail)
+  WorkoutDetail.tsx                  # Column-header set tables
+src/features/analytics/components/
+  Analytics.tsx                      # Picker, stat tiles, 1RM chart, volume, balance
+src/features/recommendations/components/
+  ExerciseSwap.tsx                   # Swap dropdown (lazy recommendations)
+```
+- **Deleted in Phase 11**: `ExerciseCard.tsx` (absorbed into WorkoutSession cards), `EquipmentPreferences.tsx` (orphan), `src/styles/tokens.ts` (superseded by `@theme`)
+- **Start screen gate**: `started` state lives in the WorkoutSession container; "Start Workout" opens the exercise picker, "Finish Workout" resets it
+- **Rest timer**: app-level `RestTimerProvider` context (see waR: Rest Timer Architecture). WorkoutSession only calls `startTimer(90)` on set log; the banner renders from App.tsx above all tabs
+
+### Phase 12 Gate
+Timestamp-based engine shipped: schema v6 `timerState` persistence ✓ · survives tab switches + reloads ✓ · document.title + app badge while running ✓ · Notification when hidden at zero ✓ · Wake Lock during rest ✓ · `npm run build` ✓ · `tsc --noEmit` ✓
+
+### Phase 13 Gate
+Template persistence root cause fixed (`getAll` replaces undefined-key index query) ✓ · rename + delete UI on all template rows, write-through to DB ✓ · ghost-bleed fixed via keyed `SetInput` remount ✓ · progression chart returns full series ✓ · `npm run build` ✓ · `tsc --noEmit` ✓
+
+---
+
 ## Development Rules
 
 ### 1. Inspect Before Modify
@@ -289,8 +369,8 @@ Each logical step = one commit. Message format: `feat(scope): description` / `fi
 | 8 Templates | Templates save/load, previous sets pre-fill, no modal overlays |
 | 9 Recommendations | Cosine similarity vectors computed client-side, exercise suggestions render |
 | 10 Volume Tracking | Weekly volume aggregates correctly, fractional muscle multipliers applied, overtraining/undertraining detection, muscle balance analysis ✓ |
-| 11 UI Redesign | All screens rebuilt per Apple design system, builds pass, lighthouse >=90 |
-| 12 Timer Fixes | Sound alert, background countdown, persists across tabs, home screen visible |
-| 13 Template Fixes | Edit/delete templates, persistence fixed, progress graph plots all points |
+| 11 UI Redesign | Stitch design system shipped (Inter, Material Symbols, light theme), bounce-free tab panes, Start Workout screen, builds pass, shipped CSS verified |
+| 12 Timer Fixes | Timestamp-based timer persists across tabs + reloads, title/badge visible outside app, notification at zero |
+| 13 Template Fixes | Persistence root cause fixed (undefined index key), rename/delete UI, ghost-bleed keyed remount, full-series chart verified |
 | 14 Exercise DB | 50+ exercises, equipment correlations, muscle distribution |
 | 7 Deploy | Static site serves on Netlify/Vercel/GitHub Pages, HTTPS, cache headers correct |

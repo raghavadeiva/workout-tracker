@@ -14,6 +14,8 @@ interface ExerciseSelectorProps {
   templates: Template[];
   onSelect: (name: string) => void;
   onStartTemplate: (template: Template) => void;
+  onRenameTemplate: (id: string, newName: string) => void;
+  onDeleteTemplate: (id: string) => void;
   onClose: () => void;
 }
 
@@ -21,6 +23,8 @@ export function ExerciseSelector({
   templates,
   onSelect,
   onStartTemplate,
+  onRenameTemplate,
+  onDeleteTemplate,
   onClose,
 }: ExerciseSelectorProps) {
   const [query, setQuery] = useState('');
@@ -79,26 +83,63 @@ export function ExerciseSelector({
             <h2 className="section-label mb-2 ml-1">Templates</h2>
             <div className="card row-sep overflow-hidden">
               {templates.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => onStartTemplate(t)}
-                  className="pressable w-full flex items-center justify-between p-4 bg-card border-none cursor-pointer text-left hover:bg-sunken"
-                >
-                  <span className="min-w-0 pr-3">
-                    <span className="block headline-sm text-ink truncate">
-                      {t.name}
+                <div key={t.id} className="flex items-center hover:bg-sunken">
+                  <button
+                    type="button"
+                    onClick={() => onStartTemplate(t)}
+                    className="pressable flex-1 min-w-0 flex items-center gap-3 p-4 bg-transparent border-none cursor-pointer text-left"
+                  >
+                    <MaterialIcon
+                      name="bookmark"
+                      size={22}
+                      style={{ color: 'var(--color-blue)', flexShrink: 0 }}
+                    />
+                    <span className="flex-1 min-w-0">
+                      <span className="block headline-sm text-ink truncate">
+                        {t.name}
+                      </span>
+                      <span className="block body-md text-secondary mt-1 truncate">
+                        {t.exerciseNames.join(', ')}
+                      </span>
                     </span>
-                    <span className="block body-md text-secondary mt-1 truncate">
-                      {t.exerciseNames.join(', ')}
-                    </span>
-                  </span>
-                  <MaterialIcon
-                    name="bookmark"
-                    size={22}
-                    style={{ color: 'var(--color-blue)', flexShrink: 0 }}
-                  />
-                </button>
+                  </button>
+                  {/* Manage: rename + delete */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const name = window.prompt('Rename template', t.name);
+                      if (name?.trim()) onRenameTemplate(t.id, name.trim());
+                    }}
+                    aria-label={`Rename ${t.name}`}
+                    className="pressable w-10 h-10 mr-0.5 flex items-center justify-center rounded-full bg-transparent border-none cursor-pointer hover:bg-sunken-high"
+                  >
+                    <MaterialIcon
+                      name="edit"
+                      size={18}
+                      style={{ color: 'var(--color-tertiary)' }}
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Delete template "${t.name}"? This cannot be undone.`
+                        )
+                      ) {
+                        onDeleteTemplate(t.id);
+                      }
+                    }}
+                    aria-label={`Delete ${t.name}`}
+                    className="pressable w-10 h-10 mr-3 flex items-center justify-center rounded-full bg-transparent border-none cursor-pointer hover:bg-red-soft"
+                  >
+                    <MaterialIcon
+                      name="delete"
+                      size={18}
+                      style={{ color: 'var(--color-red)' }}
+                    />
+                  </button>
+                </div>
               ))}
             </div>
           </section>
