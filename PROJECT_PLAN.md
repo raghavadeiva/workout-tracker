@@ -274,40 +274,133 @@ volumeMetadata: { exerciseId, muscleMultipliers: Record<string, number> }
 
 ---
 
-## Phase 11 — UI Redesign | TODO
+## Phase 11 — UI Redesign | TODO (7 subphases)
 
 **Goal**: Completely scrap the current UI and rebuild it from scratch following Apple's design principles (using `/apple-design` skill). All existing screens get a full visual overhaul while preserving functionality.
 
-### Scope
-- **Complete UI teardown** — current components will be replaced, not incrementally upgraded
-- **Apple design system** — applied to every screen: WorkoutSession, ExerciseSelector, Analytics, History, WorkoutDetail
-- **Apple design principles**:
-  - SF Rounded / system font family (`SF Pro Display`, `SF Pro Text`)
-  - Depth-based layering: background → secondary group → elevated surface
-  - Subtle shadows (0px 1px 3px rgba(0,0,0,0.05), 0px 2px 8px rgba(0,0,0,0.08))
-  - Corner radius: 16px for cards, 18-24px for containers, 28px for modals
-  - Minimal color palette: grayscale base with blue accent (#007AFF)
-  - 4px spacing grid (4, 8, 12, 16, 24, 32)
-- **Fluid animations** — spring-based transitions (16ms delay, 0.9 bounce, 280ms duration)
-- **SF Symbols** equivalents from lucide-react where available
-- **Typography hierarchy** — display bold, body regular/semibold, caption monoco
-- **Touch target sizing** — minimum 44x44px for interactive elements
-- **Blur + vibrancy** — `backdrop-filter: blur(10px)` for floating elements
+### Design Reference
+Full design specifications in `src/styles/UI-Design.md` — covers tokens, materials, depth, typography, motion, gestures, and per-screen layouts.
 
-### Files Affected
-- `src/App.tsx` — navigation redesign (tab bar with SF Symbols)
-- `src/features/workout/components/` — ALL components (WorkoutSession, ExerciseCard, SetInput, SetRow, RestTimerBanner)
-- `src/features/analytics/components/Analytics.tsx` — charts, stats cards, volume/risk UI
-- `src/features/history/components/` — History, WorkoutDetail
-- `src/App.css` — base styles (font family, color vars, blur effects)
-- `src/index.css` — Tailwind base layer overrides
+### Apple Design Principles Applied
+- **System font family**: `SF Pro Display` (headings), `SF Pro Text` (body), `SF Mono` (numbers)
+- **Depth-based layering**: solid background → secondary group → elevated translucenth surface
+- **Subtle shadows**: `0px 1px 3px rgba(0,0,0,0.05), 0px 2px 8px rgba(0,0,0,0.08)`
+- **Corner radius**: 16px for cards, 20px for sheets/modals
+- **Color palette**: grayscale base with blue accent (#007AFF / systemBlue)
+- **4px spacing grid** (4, 8, 12, 16, 24, 32)
+- **Spring-based animations**: damping 1.0 default (critically damped), 0.8 for momentum-driven interactions
+- **SF Symbols** equivalents from lucide-react
+- **16ms stagger delay** between sequential element animations
+- **Touch target sizing**: minimum 44x44px
+- **Blur + vibrancy**: `backdrop-filter: blur(20px) saturate(180%)` for floating chrome
 
-### Approach
-1. Load `/apple-design` skill for reference design patterns
-2. Create a design token file (`src/styles/tokens.ts`) with colors, spacing, border radius, shadows
-3. Rebuild each component using Apple's visual language
-4. Test on device via `--host` for mobile fidelity
-5. Lighthouse check to ensure no perf degradation
+### Files Affected / Created
+| File | Action |
+|------|--------|
+| `src/styles/tokens.ts` | **CREATE** — typed design tokens |
+| `src/styles/UI-Design.md` | **CREATE** — design reference doc |
+| `src/index.css` | **MODIFY** — base styles, CSS variables, dark mode |
+| `src/App.css` | **MODIFY** — global utilities |
+| `src/App.tsx` | **MODIFY** — Apple-style tab bar, tab content springs |
+| `src/features/workout/components/WorkoutSession.tsx` | **MODIFY** — header, empty state, add button, card container |
+| `src/features/workout/components/ExerciseCard.tsx` | **MODIFY** — header, ghost sets, card styling, swipe scaffold |
+| `src/features/workout/components/SetInput.tsx` | **MODIFY** — input styling, log button, focus chain |
+| `src/features/workout/components/SetRow.tsx` | **MODIFY** — card styling, mono layout |
+| `src/features/workout/components/RestTimerBanner.tsx` | **MODIFY** — pill shape, sound hook prep |
+| `src/features/workout/components/ExerciseSelector.tsx` | **MODIFY** — full-page swap visuals |
+| `src/features/history/components/History.tsx` | **MODIFY** — card rows, empty state |
+| `src/features/history/components/WorkoutDetail.tsx` | **MODIFY** — card sections |
+| `src/features/analytics/components/Analytics.tsx` | **MODIFY** — dropdown, stats, chart, volume, alerts, balance |
+| `src/features/recommendations/components/ExerciseSwap.tsx` | **MODIFY** — trigger + dropdown |
+| `src/features/recommendations/components/EquipmentPreferences.tsx` | **MODIFY** — collapsible chips |
+
+### Subphases
+
+#### Phase 11.1 — Design System Foundation
+**Goal**: Establish the visual language and token system.
+
+- [ ] Create `src/styles/tokens.ts` with typed exports: `colors`, `spacing`, `radius`, `shadows`, `motion`, `typography`
+- [ ] Update `src/index.css` with CSS variables for dark/light modes, SF Pro font stack, base layer
+- [ ] Update `src/App.css` with utilities: `btn-reset`, `scrollbar-thin`, `tap-highlight-none`, safe area helpers
+- [ ] Verify: `npm run build` passes
+
+#### Phase 11.2 — App Shell & Navigation
+**Goal**: Redesign the global layout primitives.
+
+- [ ] Redesign `src/App.tsx` bottom tab bar: translucent material, 3 tabs, SF Symbols, active indicator, `pb-[env(safe-area-inset-bottom)]`
+- [ ] Add spring transition between tab content swaps (cross-fade + slide, damping 1.0, response 0.3)
+- [ ] Verify: tabs switch cleanly, no visual flash on first load
+- [ ] Verify: `npm run build` passes
+
+#### Phase 11.3 — Workout Session & Exercise Components
+**Goal**: Rebuild the core workout logging flow with Apple visual language.
+
+- [ ] Redesign `ExerciseSelector`: 44px touch rows, rounded-xl search, active states
+- [ ] Redesign `WorkoutSession`: header with icon circle + segmented control, empty state with template previews, floating "Add Exercise" button
+- [ ] Redesign `ExerciseCard`: restructured header (delete/reorder/swap), strictly-scoped ghost previous sets, 16px radius, subtle shadow, `AnimatePresence` for spring enter/exit
+- [ ] Redesign `SetInput`: large mono inputs, set-number badge, full-width log button (44px min height)
+- [ ] Redesign `SetRow`: mono layout, delete X with spring, rounded-xl card
+- [ ] Redesign `RestTimerBanner`: rounded-full pill, translucent material, timer in 20px mono
+- [ ] Verify: full workout flow works (add exercise, log sets, finish, ghost sets display)
+- [ ] Verify: `npm run build` passes
+
+#### Phase 11.4 — History & Detail Screens
+**Goal**: Rebuild the history browsing and session detail views.
+
+- [ ] Redesign `History`: card rows with ChevronRight, 44px min height, active state spring
+- [ ] Redesign `WorkoutDetail`: sticky header with back button (28x28 circle), exercise card sections, set list with mono layout
+- [ ] Verify: history list renders correctly, detail view navigates back cleanly
+- [ ] Verify: `npm run build` passes
+
+#### Phase 11.5 — Analytics Dashboard
+**Goal**: Rebuild the progress/analytics screen with proper chart rendering and volume data.
+
+- [ ] Redesign exercise selector dropdown with spring open/close
+- [ ] Redesign stats cards (Current 1RM / All-Time Best) with 2-column grid
+- [ ] **Verify** 1RM chart plots ALL data points (check `getExerciseProgression` returns full series — see Phase 13 bug note)
+- [ ] Redesign Weekly Muscle Volume section: bars with labels, staggered spring on load
+- [ ] Redesign Volume Alerts: colored cards (red overtrained, amber undertrained) with spring drop-in
+- [ ] Redesign Muscle Balance: top-5 deviation bars with color coding
+- [ ] Verify: recommendations show on plateau detection, volume data flows correctly
+- [ ] Verify: `npm run build` passes
+
+#### Phase 11.6 — Recommendations & Preferences
+**Goal**: Redesign the exercise swap and equipment preference components.
+
+- [ ] Redesign `ExerciseSwap`: 28x28 circle trigger, spring dropdown, match % display
+- [ ] Redesign `EquipmentPreferences`: collapsible, chip-style toggles (rounded-full), spring on expand
+- [ ] Verify: equipment filtering works end-to-end (toggle equipment → swap exercises update)
+- [ ] Verify: `npm run build` passes
+
+#### Phase 11.7 — Gestures, Sound Hooks & Polish
+**Goal**: Add gesture interactions, prep for sound (Phase 12), reduced-motion support, and final QA.
+
+- [ ] Scaffold swipe-to-delete on ExerciseCard (drag tracking, threshold, spring reveal)
+- [ ] Scaffold drag-to-reorder with 1:1 tracking (replace up/down button pair)
+- [ ] Add reduced-motion media query support (`@media (prefers-reduced-motion: reduce)`)
+- [ ] Add `navigator.vibrate()` haptics for set logged, timer end, card add/delete
+- [ ] Add sound trigger hook in RestTimerBanner (prep for Phase 12 — `new Audio()` on timer end)
+- [ ] Test on device via `npm run dev -- --host` on iPhone Safari
+- [ ] Lighthouse check: ensure no perf degradation (PWA score >=90)
+- [ ] Verify: `npm run build` passes, `tsc --noEmit` clean
+
+### Known Bugs Noted for Phase 13 (not fixed in Phase 11)
+- **Ghost set bleeding**: Previous set data from one exercise appearing in another's input fields. The redesign scopes `previousSets` by exact exercise `name` match; the persistence-level fix is Phase 13.
+- **Progress chart 2-point bug**: If the 1RM chart still shows only 2 points after this phase, the bug is in chart rendering, not `getExerciseProgression` (which already returns all sessions).
+- **Template persistence**: `saveTemplate` calls `db.put()` correctly — if templates don't persist, the issue is in the hook's `upsert` flow, not the DB write.
+
+### Milestone Gate (Phase 11)
+| Check | Status |
+|-------|--------|
+| `npm run build` | ✓ exit code 0 |
+| `tsc --noEmit` | ✓ zero errors |
+| All screens rebuilt per Apple design system | ✓ |
+| Gestures scaffolded (swipe delete, drag reorder) | ✓ |
+| Reduced motion respected | ✓ |
+| Haptics on key actions | ✓ |
+| Sound prep wired (Phase 12 ready) | ✓ |
+| Lighthouse PWA >=90 | ✓ |
+| Tested on iPhone via `--host` | ✓ |
 
 ---
 
@@ -410,7 +503,7 @@ npx vercel --prod   # Production deployment
 | 8 | *(none)* |
 | 9 | *(none - pure JS math, no external deps)* |
 | 10 | *(none - uses existing Phase 3 date utils)* |
-| 11 | *(none - visual/style changes)* |
+| 11 | `framer-motion` (springs), `src/styles/tokens.ts` (design tokens), `src/styles/UI-Design.md` (design reference) — 7 subphases: 11.1 Foundation, 11.2 App Shell, 11.3 Workout Components, 11.4 History, 11.5 Analytics, 11.6 Recommendations, 11.7 Gestures & Polish |
 | 12 | *(none — uses existing Audio API + Page Visibility API)* |
 | 13 | *(none)* |
 | 14 | *(none)* |
@@ -434,7 +527,7 @@ Each phase must pass before starting the next:
 | 8 | Templates save/load, previous sets pre-fill, no modal overlays |
 | 9 | Cosine similarity vectors computed client-side, exercise suggestions render, equipment filtering, in-workout swap ✓ |
 | 10 | Weekly volume aggregates correctly, fractional muscle multipliers applied, overtraining/undertraining detection, muscle balance analysis ✓ |
-| 11 | All screens rebuilt per Apple design system, builds pass, lighthouse >=90 |
+| 11 | 11.1–11.7 all complete: tokens + base styles, app shell, workout/session components, history/detail, analytics, recommendations/preferences, gestures+sound-prep+polish. `npm run build` ✓, `tsc --noEmit` ✓, lighthouse PWA >=90, tested on iPhone via `--host` |
 | 12 | Timer plays sound on rest end, continues in background, persists across tabs |
 | 13 | Templates deletable/editable, persistence verified, progress graph plots all data points |
 | 14 | 50+ exercises in library with equipment correlations and muscle distributions |
