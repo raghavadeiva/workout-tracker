@@ -205,14 +205,10 @@ src/
 ## Roadmap
 
 ### ✅ Complete
-Phases 0-13 — Foundation, persistence, history, rest timer, analytics, PWA, templates, vector recommendations, weekly volume tracking, **UI redesign (Stitch design system)**, **timestamp-based timer engine**, **template & history fixes (persistence root cause, edit/delete, ghost-bleed)**
+Phases 0-6, 8-14 — Foundation, persistence, history, rest timer, analytics, PWA, templates, **873-exercise vector recommendation engine**, weekly volume tracking, **UI redesign (Stitch design system)**, **timestamp-based timer engine**, **template & history fixes**, **exercise database expansion**
 
-### 📋 Next (Phase 14)
-| Phase | Focus | User Feedback |
-|-------|-------|---------------|
-| 14 | Exercise Database Expansion | Expand library to 50+ exercises, equipment strength correlations, muscle target distribution |
-
-Phase 7 (Production Deployment) unblocks after Phase 14.
+### 📋 Next (Phase 7)
+Production deployment — static hosting (Vercel), HTTPS, cache headers. All feature phases are complete; the app is deploy-ready via `npx vercel`.
 
 ---
 

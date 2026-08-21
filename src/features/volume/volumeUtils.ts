@@ -1,7 +1,11 @@
 /**
  * Volume calculation utilities for weekly muscle group load tracking.
  *
- * Computes: volume = sets * reps * weight * muscleMultiplier
+ * Unit: SETS per muscle per week (Phase 14.2 — was weight×reps tonnage).
+ * A set counts 1.0 toward its primary muscles, fractionally toward secondary
+ * contributors per the activation map. This matches the evidence-based
+ * "weekly sets per muscle group" convention used in hypertrophy research.
+ *
  * Groups totals by ISO week and per-muscle-group.
  */
 
@@ -63,15 +67,12 @@ function getISOWeek(timestamp: number): { weekKey: string; weekLabel: string } {
 }
 
 /**
- * Calculates the volume contribution of a single set for a given muscle group.
- * volume = weight * reps * multiplier
+ * Calculates the fractional-set contribution of a single set for one muscle.
+ * A set = 1.0 × activation (primary 1.0, secondary 0.5, minor 0.25).
+ * Weight and reps are intentionally excluded: the unit is SETS, not tonnage.
  */
-function calculateSetVolume(
-  weight: number,
-  reps: number,
-  multiplier: number
-): number {
-  return weight * reps * multiplier;
+function calculateSetVolume(_weight: number, _reps: number, multiplier: number): number {
+  return multiplier;
 }
 
 /**
@@ -154,9 +155,11 @@ export function getLatestWeekVolumes(
   return weekly[weekly.length - 1].volumes;
 }
 
-/** Thresholds for overtraining/undertraining detection (in volume units). */
-const OVERTRAINING_THRESHOLD = 10000; // volume above this per muscle per week = overreaching risk
-const UNDERTRAINING_THRESHOLD = 500;  // volume below this per muscle per week = undertraining risk
+/** Thresholds for overtraining/undertraining detection, in SETS per week.
+ * Evidence-based hypertrophy guidelines: ~10-20 hard sets/muscle/week is a
+ * productive range; >25 risks overreaching; <4 leaves a muscle undertrained. */
+const OVERTRAINING_THRESHOLD = 25;
+const UNDERTRAINING_THRESHOLD = 4;
 
 /** Result of overtraining/undertraining analysis for a single week. */
 export interface VolumeRiskResult {

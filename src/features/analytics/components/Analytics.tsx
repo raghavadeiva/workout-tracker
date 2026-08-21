@@ -319,7 +319,10 @@ export function Analytics() {
       {/* Weekly volume card */}
       {!volLoading && latestWeek && (
         <div className="card p-5 mb-4">
-          <h2 className="headline-sm text-ink mb-4">Latest week volume</h2>
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="headline-sm text-ink">Weekly sets</h2>
+            <span className="body-md text-tertiary">sets / week</span>
+          </div>
           <div className="space-y-4">
             {MUSCLE_GROUPS.map((m: MuscleGroup) => {
               const v = latestWeek.volumes[m];
@@ -331,8 +334,8 @@ export function Analytics() {
                     <span style={{ color: 'var(--color-ink)' }}>
                       {MUSCLE_LABELS[m]}
                     </span>
-                    <span style={{ color: 'var(--color-tertiary)' }}>
-                      {Math.round(v)}
+                    <span style={{ color: 'var(--color-tertiary)' }} className="tnum">
+                      {v % 1 === 0 ? v : v.toFixed(1)} set{v === 1 ? '' : 's'}
                     </span>
                   </div>
                   <div
@@ -351,6 +354,9 @@ export function Analytics() {
               );
             })}
           </div>
+          <p className="body-md text-faint mt-4">
+            Secondaries count fractionally (0.5 set).
+          </p>
         </div>
       )}
 
@@ -389,7 +395,7 @@ export function Analytics() {
                   {MUSCLE_LABELS[r.muscle]}
                 </span>
                 <span className="body-md ml-auto tnum text-secondary">
-                  {r.label}
+                  {r.label} · {Math.round(r.volume)} sets
                 </span>
               </div>
             ))}

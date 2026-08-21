@@ -1,5 +1,8 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import { EXERCISE_VECTORS } from '../features/recommendations/exerciseVectors';
+import {
+  EXERCISE_LIBRARY,
+  VECTOR_DIMENSIONS,
+} from '../features/recommendations/exerciseVectors';
 
 export interface WorkoutSession {
   id: string;
@@ -29,6 +32,7 @@ export type WeightUnit = 'lbs' | 'kg';
 export interface UserSettings {
 	weightUnit: WeightUnit;
 	availableEquipment: string[]; // equipment the user has access to
+	favoriteExercises?: string[]; // starred exercises, shown first in the picker
 }
 
 export interface Template {
@@ -212,6 +216,7 @@ export async function saveWeightUnit(unit: WeightUnit): Promise<void> {
   await db.put('settings', {
     weightUnit: unit,
     availableEquipment: existing?.availableEquipment ?? [],
+    favoriteExercises: existing?.favoriteExercises ?? [],
   }, 'prefs');
 }
 
@@ -227,6 +232,7 @@ export async function saveAvailableEquipment(equipment: string[]): Promise<void>
   await db.put('settings', {
     weightUnit: existing?.weightUnit ?? 'lbs',
     availableEquipment: equipment,
+    favoriteExercises: existing?.favoriteExercises ?? [],
   }, 'prefs');
 }
 
@@ -234,6 +240,34 @@ export async function loadAvailableEquipment(): Promise<string[]> {
   const db = await getDB();
   const prefs = await db.get('settings', 'prefs');
   return prefs?.availableEquipment ?? [];
+}
+
+// ─── Favorite Exercises (Phase 14.1) ─────────────────────────
+
+/** Returns the user's favorited exercise names (empty array if none). */
+export async function loadFavoriteExercises(): Promise<string[]> {
+  const db = await getDB();
+  const prefs = await db.get('settings', 'prefs');
+  return prefs?.favoriteExercises ?? [];
+}
+
+/**
+ * Toggles one exercise's favorite status and persists the new list.
+ * Returns the updated favorites array.
+ */
+export async function toggleFavoriteExercise(name: string): Promise<string[]> {
+  const db = await getDB();
+  const prefs = await db.get('settings', 'prefs');
+  const current = prefs?.favoriteExercises ?? [];
+  const next = current.includes(name)
+    ? current.filter((n) => n !== name)
+    : [...current, name];
+  await db.put('settings', {
+    weightUnit: prefs?.weightUnit ?? 'lbs',
+    availableEquipment: prefs?.availableEquipment ?? [],
+    favoriteExercises: next,
+  }, 'prefs');
+  return next;
 }
 
 // ─── Rest Timer Persistence (schema v6) ──────────────────────
@@ -273,57 +307,87 @@ export async function getAllExerciseEmbeddings(): Promise<ExerciseEmbedding[]> {
 }
 
 /**
- * Seeds the recommendations store with exercise vectors from exerciseVectors.ts.
- * Called on app init; idempotent (put overwrites existing entries).
+ * Seeds the recommendations store with exercise vectors from the generated
+ * 873-exercise library (Phase 14).
+ *
+ * Version-gated: seeds only when the stored seed version differs from the
+ * library's, so the 873-record write happens once per dataset change — not
+ * every app load.
+ *
+ * Idempotent (put overwrites existing entries). Old-schema entries for
+ * exercises no longer present are left in place but never queried by the
+ * vector engine (which reads from the in-memory library), so they are harmless.
  */
+const SEED_VERSION_KEY = 'seed-version';
+let seedPromise: Promise<void> | null = null;
+
 export async function seedExerciseEmbeddings(): Promise<void> {
-  const embeddings: ExerciseEmbedding[] = [];
-  for (const [name, vector] of Object.entries(EXERCISE_VECTORS)) {
-    embeddings.push({
-      exerciseId: name,
-      vector: Array.from(vector),
+  // Coalesce concurrent calls (multiple components mounting at once)
+  if (!seedPromise) {
+    seedPromise = doSeed();
+  }
+  return seedPromise;
+}
+
+async function doSeed(): Promise<void> {
+  const db = await getDB();
+  const currentVersion = `v2-${EXERCISE_LIBRARY.length}`;
+
+  // Seed marker lives in the recommendations store itself under a reserved
+  // key (the settings store is strictly typed to UserSettings).
+  const marker = await db.get('recommendations', SEED_VERSION_KEY);
+  if ((marker as { version?: string } | undefined)?.version === currentVersion) {
+    return; // up to date
+  }
+
+  const tx = db.transaction('recommendations', 'readwrite');
+  for (const rec of EXERCISE_LIBRARY) {
+    await tx.objectStore('recommendations').put({
+      exerciseId: rec.id,
+      vector: rec.vector,
       metadata: {
-        muscleGroups: getMuscleGroupsFromVector(vector),
-        equipment: getEquipmentFromVector(vector),
-        movementPattern: getMovementPatternFromVector(vector),
-        difficulty: 3, // default medium; could be expanded later
+        muscleGroups: getMuscleGroupsFromVector(rec.vector),
+        equipment: getEquipmentFromRecord(rec),
+        movementPattern: 'compound', // not encoded in the new schema
+        difficulty: levelToDifficulty(rec.level),
       },
     });
   }
-  const db = await getDB();
-  const tx = db.transaction('recommendations', 'readwrite');
-  for (const emb of embeddings) {
-    await tx.objectStore('recommendations').put(emb);
-  }
+  await tx.objectStore('recommendations').put(
+    {
+      exerciseId: SEED_VERSION_KEY,
+      vector: [],
+      metadata: { version: currentVersion },
+    } as unknown as ExerciseEmbedding,
+    SEED_VERSION_KEY
+  );
   await tx.done;
 }
 
-/** Extracts active muscle group dimension names from a vector. */
-function getMuscleGroupsFromVector(vector: Float32Array): string[] {
-  const muscleIndices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-  const muscleNames = ['chest', 'upperBack', 'shoulders', 'quads', 'hamstrings', 'glutes', 'triceps', 'biceps', 'calves', 'abs'];
-  return muscleIndices
-    .filter((i) => vector[i] > 0)
-    .map((i) => muscleNames[i]);
+/** Maps dataset level strings to the 1–5 difficulty scale. */
+function levelToDifficulty(level: string): number {
+  switch (level?.toLowerCase()) {
+    case 'beginner':
+      return 1;
+    case 'intermediate':
+      return 3;
+    case 'expert':
+      return 5;
+    default:
+      return 3;
+  }
 }
 
-/** Extracts active equipment dimension names from a vector. */
-function getEquipmentFromVector(vector: Float32Array): string[] {
-  const equipIndices = [10, 11, 12, 13];
-  const equipNames = ['barbell', 'dumbbell', 'machine', 'bodyweight'];
-  return equipIndices
-    .filter((i) => vector[i] > 0)
-    .map((i) => equipNames[i]);
+/** Collects the record's raw equipment string into metadata. */
+function getEquipmentFromRecord(rec: {
+  equipment: string;
+}): string[] {
+  return rec.equipment ? [rec.equipment] : [];
 }
 
-/** Extracts active movement pattern dimension names from a vector. */
-function getMovementPatternFromVector(vector: Float32Array): string {
-  const patternIndices = [14, 15, 16, 17, 18, 19];
-  const patternNames = ['push', 'pull', 'hinge', 'squat', 'lunge', 'carry'];
-  const active = patternIndices
-    .filter((i) => vector[i] > 0)
-    .map((i) => patternNames[i]);
-  return active.join('/') || 'compound';
+/** Extracts active muscle-group dimension names from a vector. */
+function getMuscleGroupsFromVector(vector: number[]): string[] {
+  return VECTOR_DIMENSIONS.filter((_, i) => (vector[i] ?? 0) > 0);
 }
 
 export const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);

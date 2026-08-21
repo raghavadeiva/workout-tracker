@@ -1,6 +1,9 @@
 /**
  * Vector math utilities for the client-side recommendation engine.
  * All computation is 100% local — no external API calls.
+ *
+ * All functions loop to `vector.length`, so they work for any dimensionality
+ * (currently 20-dim muscle vectors from the generated library).
  */
 
 /**
@@ -8,8 +11,8 @@
  * Both vectors must be the same length.
  */
 export function dotProduct(
-  vecA: Float32Array | number[],
-  vecB: Float32Array | number[]
+  vecA: number[],
+  vecB: number[]
 ): number {
   if (vecA.length !== vecB.length) {
     throw new Error(
@@ -26,7 +29,7 @@ export function dotProduct(
 /**
  * Computes the Euclidean magnitude (L2 norm) of a vector.
  */
-export function magnitude(vec: Float32Array | number[]): number {
+export function magnitude(vec: number[]): number {
   let sumOfSquares = 0;
   for (let i = 0; i < vec.length; i++) {
     sumOfSquares += vec[i] * vec[i];
@@ -44,8 +47,8 @@ export function magnitude(vec: Float32Array | number[]): number {
  * Formula: cos(theta) = dot(a, b) / (||a|| * ||b||)
  */
 export function calculateCosineSimilarity(
-  vecA: Float32Array | number[],
-  vecB: Float32Array | number[]
+  vecA: number[],
+  vecB: number[]
 ): number {
   if (vecA.length !== vecB.length) {
     throw new Error(
