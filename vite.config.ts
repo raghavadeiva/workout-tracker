@@ -9,6 +9,17 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Precache every asset needed for a fully-offline first paint,
+      // including the self-hosted fonts (public/fonts/) — without these the
+      // Material Symbols icon font fails offline and icons render as raw
+      // ligature text.
+      includeAssets: [
+        'favicon.svg',
+        'icons.svg',
+        'fonts/inter.css',
+        'fonts/material-symbols.css',
+        'fonts/*.woff2',
+      ],
       manifest: {
         name: 'Hypertrophy',
         short_name: 'Hypertrophy',

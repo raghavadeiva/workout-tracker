@@ -189,6 +189,16 @@ marker bug silently rolled back all 873 embedding writes on every app load).
 Explicit keys are only valid for out-of-line stores (`activeSession`,
 `settings`, `timerState`). Regression-covered in `tests/finishFlow.test.ts`.
 
+### waR: Fonts Are Self-Hosted — Never Reintroduce Google Fonts Links
+`index.html` loads `/fonts/inter.css` and `/fonts/material-symbols.css`
+from `public/fonts/`, precached by the service worker (`includeAssets` in
+`vite.config.ts`). The original Google-hosted `<link>`s were invisible to
+the SW precache: offline, Material Symbols Outlined failed and every icon
+rendered as raw ligature text ("fitness_center"). To change weights/axes:
+fetch the css2 URL with a desktop-Chrome User-Agent (returns woff2),
+download each gstatic file into `public/fonts/`, rewrite URLs in the CSS,
+commit. Verified offline end-to-end in `tests/e2e-offline.cjs`.
+
 ---
 
 ## Phase 9 — Vector-Based Recommendation Engine (updated Phase 14)
