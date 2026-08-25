@@ -9,7 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { getHistory, type WorkoutSession } from '../../../db/database';
+import { getHistory, onHistoryChanged, type WorkoutSession } from '../../../db/database';
 import { getExerciseProgression, getAllExerciseNames } from '../utils/math';
 import { detectPlateau, type OneRMDataPoint } from '../plateauDetection';
 import { useWeeklyVolume } from '../../volume/useWeeklyVolume';
@@ -35,16 +35,23 @@ export function Analytics() {
   const [loading, setLoading] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  // Refresh whenever history changes (workout finished) — the Progress pane
+  // mounts once at app open and never remounts, so a one-shot fetch goes stale.
   useEffect(() => {
     let alive = true;
-    getHistory().then((sessions) => {
-      if (alive) {
-        setHistory(sessions);
-        setLoading(false);
-      }
-    });
+    const refresh = () => {
+      getHistory().then((sessions) => {
+        if (alive) {
+          setHistory(sessions);
+          setLoading(false);
+        }
+      });
+    };
+    refresh();
+    const unsubscribe = onHistoryChanged(refresh);
     return () => {
       alive = false;
+      unsubscribe();
     };
   }, []);
 

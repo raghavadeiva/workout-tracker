@@ -74,7 +74,16 @@ export function WorkoutSession() {
       onReorder={reorderExercise}
       onSwap={(id, newName) => void swapExercise(id, newName)}
       onFinish={() => {
-        void finishWorkout();
+        // Surface persistence failures — a silent void here is how "my
+        // workout didn't save" happens without any visible feedback.
+        finishWorkout().catch((err) => {
+          console.error('Finish workout failed:', err);
+          window.alert(
+            err instanceof Error && err.message === 'Cannot finish an empty workout'
+              ? 'Add at least one exercise before finishing.'
+              : 'Could not save your workout. Please try again.'
+          );
+        });
         setStarted(false);
       }}
       onSaveTemplate={(name) => void saveCurrentAsTemplate(name)}

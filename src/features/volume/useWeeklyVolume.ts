@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { getHistory } from '../../db/database';
+import { getHistory, onHistoryChanged } from '../../db/database';
 import type { WorkoutSession } from '../../db/database';
 import { calculateWeeklyVolume, type WeeklyVolumeEntry } from './volumeUtils';
 
@@ -47,9 +47,15 @@ export function useWeeklyVolume() {
     }
 
     load();
+    // Refetch when a workout finishes — this hook lives on the permanently
+    // mounted Progress pane, so a one-shot fetch would go stale.
+    const unsubscribe = onHistoryChanged(() => {
+      void load();
+    });
 
     return () => {
       mounted = false;
+      unsubscribe();
     };
   }, []);
 

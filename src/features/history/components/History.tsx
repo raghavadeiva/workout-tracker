@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   getHistory,
+  onHistoryChanged,
   type WorkoutSession,
   type Exercise,
 } from '../../../db/database';
+import { workoutDurationMs, formatDuration, workoutEndedAt } from '../../../lib/duration';
 import { MaterialIcon } from '../../../components/MaterialIcon';
 import { WorkoutDetail } from './WorkoutDetail';
 
@@ -17,29 +19,24 @@ function formatDay(ts: number): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function duration(startedAt: number, updatedAt: number): string {
-  const mins = Math.max(1, Math.round((updatedAt - startedAt) / 60000));
-  if (mins < 60) return `${mins}m`;
-  return `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}m`;
-}
-
 export function HistoryScreen() {
   const [history, setHistory] = useState<WorkoutSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<WorkoutSession | null>(null);
 
-  useEffect(() => {
-    let alive = true;
+  // Refresh whenever history changes (workout finished) so the list is
+  // never stale — the pane mounts once at app open and never remounts.
+  const refresh = useCallback(() => {
     getHistory().then((sessions) => {
-      if (alive) {
-        setHistory(sessions);
-        setLoading(false);
-      }
+      setHistory(sessions);
+      setLoading(false);
     });
-    return () => {
-      alive = false;
-    };
   }, []);
+
+  useEffect(() => {
+    refresh();
+    return onHistoryChanged(refresh);
+  }, [refresh]);
 
   if (selected) {
     return <WorkoutDetail session={selected} onBack={() => setSelected(null)} />;
@@ -108,8 +105,13 @@ export function HistoryScreen() {
                 </span>
                 <span className="flex items-center gap-2 flex-shrink-0">
                   <span className="body-md text-tertiary tnum whitespace-nowrap">
-                    {duration(session.startedAt, session.updatedAt)} · {sets}{' '}
-                    sets
+                    {formatDuration(
+                      workoutDurationMs(
+                        session.startedAt,
+                        workoutEndedAt(session)
+                      )
+                    )}{' '}
+                    · {sets} sets
                   </span>
                   <MaterialIcon
                     name="chevron_right"

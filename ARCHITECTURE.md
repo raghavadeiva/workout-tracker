@@ -158,6 +158,37 @@ if (showSelector) return <Selector />;
 ### waR: SetInput Prefill Seeding
 **Prefill state must be seeded synchronously at mount, not via effect resync.** `SetInput` is keyed by `` `${exerciseId}:${setCount}` `` in WorkoutSession so it remounts whenever the exercise or set count changes — local weight/reps state initializes from the correct exercise's data on first render. Do not remove the key or reintroduce an effect that copies `previousWeight/previousReps` into state on every prop change; that pattern lagged a frame behind and leaked values across exercises ("ghost bleeding").
 
+### waR: Workout Duration Comes From `finishedAt`, Never `updatedAt`
+`updatedAt` is mutated by every autosave (and used to be stamped by the
+mount-time autosave), so it is NOT a duration endpoint. `finishSession()`
+stamps an immutable `finishedAt` epoch-ms on the stored history record;
+duration = `startedAt .. finishedAt` via `src/lib/duration.ts`
+(`workoutDurationMs` + `formatDuration`). Legacy records without the field
+fall back to `updatedAt`. New sessions are created via `createEmptySession()`
+(fresh id + timestamps) — never reuse a finished session's identity.
+
+### waR: Permanent Tab Panes Go Stale Without History Notifications
+History/Analytics/`useWeeklyVolume` render into permanent `display:none`
+panes that mount once at app open — a one-shot `getHistory()` fetch shows an
+empty/stale list forever. All three subscribe to `onHistoryChanged()`
+(database.ts), fired by `finishSession()` after the transaction commits.
+Any new surface reading history must subscribe the same way.
+
+### waR: Autosave Effects Must Be Gated On Initial Load
+The session/unit/equipment autosave effects in `useWorkoutSession` check
+`hasLoadedRef.current` (set only after the initial DB load resolves).
+Without the gate, the first render writes defaults over persisted data and
+stamps a bogus `updatedAt` on the just-loaded session. DB writes in these
+effects have `.catch(console.error)` — never fire-and-forget silent writes.
+
+### waR: Inline-Key Object Stores Reject Explicit `put(value, key)`
+Stores declared with `keyPath` (e.g. `history`, `templates`,
+`recommendations`) throw `DataError` if you pass a second key argument to
+`put()` — and inside a transaction that aborts EVERY write in it (the seed
+marker bug silently rolled back all 873 embedding writes on every app load).
+Explicit keys are only valid for out-of-line stores (`activeSession`,
+`settings`, `timerState`). Regression-covered in `tests/finishFlow.test.ts`.
+
 ---
 
 ## Phase 9 — Vector-Based Recommendation Engine (updated Phase 14)

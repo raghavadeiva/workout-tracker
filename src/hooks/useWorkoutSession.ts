@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   saveSession,
   loadSession,
@@ -28,6 +28,10 @@ export function useWorkoutSession() {
   const [availableEquipment, setAvailableEquipmentState] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [templates, setTemplates] = useState<Template[]>([]);
+  // Guards the autosave effects: until the initial DB load resolves they
+  // would write default/empty values over real persisted data (and stamp a
+  // bogus updatedAt on the freshly loaded session).
+  const hasLoadedRef = useRef(false);
 
   // Load session, settings, and templates on mount
   useEffect(() => {
@@ -46,6 +50,7 @@ export function useWorkoutSession() {
         setWeightUnit(savedUnit);
         setAvailableEquipmentState(savedEquipment);
         setTemplates(savedTemplates);
+        hasLoadedRef.current = true; // autosave effects may now run
         setIsLoading(false);
       }
     }
@@ -57,24 +62,33 @@ export function useWorkoutSession() {
     };
   }, []);
 
-  // Auto-save session whenever it changes
+  // Auto-save session whenever it actually changes. The hasLoadedRef guard
+  // keeps the mount-time load from triggering a redundant (and previously
+  // updatedAt-polluting) write; Strict Mode's double-invoked effects are
+  // also filtered by the ref.
   useEffect(() => {
-    if (session && !isLoading) {
-      saveSession({ ...session, updatedAt: Date.now() });
+    if (session && !isLoading && hasLoadedRef.current) {
+      saveSession({ ...session, updatedAt: Date.now() }).catch((err) =>
+        console.error('Auto-save failed:', err)
+      );
     }
   }, [session, isLoading]);
 
   // Auto-save weight unit
   useEffect(() => {
-    if (!isLoading) {
-      saveWeightUnit(weightUnit);
+    if (!isLoading && hasLoadedRef.current) {
+      saveWeightUnit(weightUnit).catch((err) =>
+        console.error('Failed to save weight unit:', err)
+      );
     }
   }, [weightUnit, isLoading]);
 
   // Auto-save available equipment
   useEffect(() => {
-    if (!isLoading) {
-      saveAvailableEquipment(availableEquipment);
+    if (!isLoading && hasLoadedRef.current) {
+      saveAvailableEquipment(availableEquipment).catch((err) =>
+        console.error('Failed to save equipment preferences:', err)
+      );
     }
   }, [availableEquipment, isLoading]);
 
@@ -191,14 +205,21 @@ export function useWorkoutSession() {
     );
   }, []);
 
-  const finishWorkout = useCallback(async () => {
-    if (!session || session.exercises.length === 0) return;
-    await finishSession(session);
+  const finishWorkout = useCallback(async (): Promise<void> => {
+    if (!session || session.exercises.length === 0) {
+      throw new Error('Cannot finish an empty workout');
+    }
+    // Persist with the unit active at finish time (WorkoutDetail has no
+    // other way to know lbs vs kg).
+    const finishedSession = { ...session, weightUnit };
+    await finishSession(finishedSession);
+    // Fresh id + timestamps — the next workout must not inherit this one's.
     setSession(createEmptySession());
-  }, [session]);
+  }, [session, weightUnit]);
 
-  const clearWorkout = useCallback(async () => {
+  const clearWorkout = useCallback(async (): Promise<void> => {
     await clearSession();
+    // Fresh id + timestamps — never reuse the discarded session's identity.
     setSession(createEmptySession());
   }, []);
 

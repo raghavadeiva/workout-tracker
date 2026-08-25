@@ -9,6 +9,14 @@ export interface WorkoutSession {
   exercises: Exercise[];
   startedAt: number;
   updatedAt: number;
+  /**
+   * Epoch ms stamped exactly once by finishSession(). The authoritative end
+   * of the workout for duration display — `updatedAt` is mutated by
+   * autosaves and cannot be trusted as a finish time.
+   */
+  finishedAt?: number;
+  /** Unit active when the workout was finished (used by WorkoutDetail). */
+  weightUnit?: WeightUnit;
   name?: string;
 }
 
@@ -161,10 +169,39 @@ export async function clearSession(): Promise<void> {
 
 export async function finishSession(session: WorkoutSession): Promise<void> {
   const db = await getDB();
+  const finishedAt = Date.now();
+  // Stamp the authoritative end time on the stored record (never mutated
+  // afterwards, unlike updatedAt which autosaves touch).
+  const finished: WorkoutSession = { ...session, finishedAt };
   const tx = db.transaction(['history', 'activeSession'], 'readwrite');
-  await tx.objectStore('history').put(session);
+  await tx.objectStore('history').put(finished);
   await tx.objectStore('activeSession').delete('current');
   await tx.done;
+  // Root-cause fix for "saved workouts not visible in history": History,
+  // Analytics, and volume hooks live on permanent display:none panes that
+  // mounted (and fetched) once at app open. They now subscribe here and
+  // refetch when history actually changes.
+  notifyHistoryChanged();
+}
+
+// ─── History change notifications ─────────────────────────────
+
+const historyListeners = new Set<() => void>();
+
+/**
+ * Subscribes to history mutations. Returns an unsubscribe function.
+ * Listeners fire after finishSession commits (fire-and-forget refresh
+ * trigger for UI surfaces that read getHistory()).
+ */
+export function onHistoryChanged(listener: () => void): () => void {
+  historyListeners.add(listener);
+  return () => {
+    historyListeners.delete(listener);
+  };
+}
+
+function notifyHistoryChanged(): void {
+  for (const listener of historyListeners) listener();
 }
 
 export async function getHistory(): Promise<WorkoutSession[]> {
@@ -358,8 +395,11 @@ async function doSeed(): Promise<void> {
       exerciseId: SEED_VERSION_KEY,
       vector: [],
       metadata: { version: currentVersion },
-    } as unknown as ExerciseEmbedding,
-    SEED_VERSION_KEY
+    } as unknown as ExerciseEmbedding
+    // NOTE: no explicit key argument — 'recommendations' has keyPath
+    // 'exerciseId' (in-line keys), so passing one throws DataError and
+    // aborts the whole seed transaction (all 873 writes rolled back,
+    // re-seeded + errored on every app load).
   );
   await tx.done;
 }

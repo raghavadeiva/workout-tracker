@@ -22,12 +22,15 @@ function formatDay(ts: number): string {
 export function WorkoutDetail({ session, onBack }: WorkoutDetailProps) {
   const totalSets = session.exercises.reduce((n, e) => n + e.sets.length, 0);
 
-  // Infer unit from the largest logged weight (detail view has no stored unit)
+  // Unit recorded at finish time (falls back to inference for legacy records
+  // that predate the weightUnit field).
   const maxWeight = Math.max(
     0,
     ...session.exercises.flatMap((e) => e.sets.map((s) => s.weight))
   );
-  const unit: WeightUnit = maxWeight >= 100 ? 'lbs' : 'kg';
+  const unit: WeightUnit =
+    session.weightUnit ??
+    (maxWeight >= 100 ? 'lbs' : 'kg');
 
   return (
     <div>
